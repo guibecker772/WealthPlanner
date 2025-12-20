@@ -1,0 +1,35 @@
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { useState, useEffect } from "react";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCnwY1plM50GYghPwc41koxXPH6WsFYH1o",
+  authDomain: "wealthplanner-511b0.firebaseapp.comN",
+  projectId: "wealthplanner-511b0",
+  storageBucket: "wealthplanner-511b0.firebasestorage.app",
+  messagingSenderId: "745861111094",
+  appId: "1:745861111094:web:13575987e2ae81d2966797",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+function useAuth() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return { currentUser, loading };
+}
+
+export { db, auth, useAuth };
