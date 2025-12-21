@@ -550,7 +550,10 @@ const initialState = {
 
 function wealthReducer(state, action) {
   switch (action.type) {
+    case 'RESET_DATA': return initialState; // <--- ESSA É A LINHA MÁGICA QUE ZERA TUDO
     case 'INIT_DATA': return { ...state, simulations: action.payload.length ? action.payload : [INITIAL_CLIENT_DATA] };
+    case 'SET_ACTIVE_INDEX': return { ...state, activeSimIndex: action.payload };
+    // ... mantenha o resto igual
     case 'SET_ACTIVE_INDEX': return { ...state, activeSimIndex: action.payload };
     case 'UPDATE_FIELD': {
       const newSims = [...state.simulations];
@@ -1158,30 +1161,55 @@ const AppContent = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Firestore Sync
+// --- NOVO: AUTO-SAVE (Salva automaticamente quando muda algo) ---
   useEffect(() => {
+    // 1. Só salva se tiver usuário logado
     if (!user) return;
-    const unsubscribe = onSnapshot(doc(db, 'users', user.uid, 'data', 'simulations'), (docSnap) => {
-       // if (docSnap.exists()) {
-          // const data = docSnap.data();
-       // }
-    });
-    getDoc(doc(db, 'users', user.uid, 'data', 'simulations')).then(docSnap => {
-        if (docSnap.exists()) {
-            dispatch({ type: 'INIT_DATA', payload: docSnap.data().list });
-        }
-    });
-    return () => unsubscribe();
-  }, [user]);
+
+    // 2. Função que grava no banco
+    const saveData = async () => {
+      try {
+        // Grava dentro da pasta do usuário (users -> UID -> data -> simulations)
+        await setDoc(doc(db, 'users', user.uid, 'data', 'simulations'), {
+          list: state.simulations, // Salva a lista inteira
+          lastSaved: new Date()    // (Opcional) Salva a data da última alteração
+        });
+        console.log("✅ Auto-save: Dados salvos com sucesso!");
+      } catch (error) {
+        console.error("❌ Erro no Auto-save:", error);
+      }
+    };
+
+    // 3. Debounce (Espera 1 segundinho após você parar de mexer para salvar)
+    // Isso evita que o site salve mil vezes enquanto você digita rápido.
+    const timeOutId = setTimeout(saveData, 1000);
+
+    // Limpeza do timer
+    return () => clearTimeout(timeOutId);
+
+  }, [state.simulations, user]); // <--- O SEGREDO: Roda sempre que 'state.simulations' muda
 
   // Auto-Save to Firestore
   useEffect(() => {
-    if (!user || state.simulations.length === 0) return;
-    const timeoutId = setTimeout(() => {
-       setDoc(doc(db, 'users', user.uid, 'data', 'simulations'), { list: state.simulations }, { merge: true });
-    }, 2000);
-    return () => clearTimeout(timeoutId);
-  }, [state.simulations, user]);
+    // 1. Se não tiver usuário (fez logout), ZERA a memória imediatamente.
+    if (!user) {
+      dispatch({ type: 'RESET_DATA' });
+      return;
+    }
 
+    // 2. Se tiver usuário, monitora o banco de dados DELE (user.uid)
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid, 'data', 'simulations'), (docSnap) => {
+       if (docSnap.exists()) {
+          // Se existirem dados salvos, carrega eles
+          dispatch({ type: 'INIT_DATA', payload: docSnap.data().list });
+       } else {
+          // Se for usuário novo (sem dados), inicia com o padrão
+          dispatch({ type: 'INIT_DATA', payload: [INITIAL_CLIENT_DATA] });
+       }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-100"><Loader2 className="animate-spin text-indigo-600" size={48}/></div>;
   if (!user) return <AuthScreen />;
