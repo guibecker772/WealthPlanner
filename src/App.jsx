@@ -414,13 +414,12 @@ const useSmartCopilot = (data, viewMode, isEnabled) => {
   const lastDataHash = useRef("");
 
   const generateAnalysis = useCallback(async () => {
-    // 1. Se estiver desligado, usa o mock local
+    // 1. Validações iniciais
     if (!isEnabled) {
         setInsights(getFallbackMockData(data, viewMode));
         return;
     }
 
-    // 2. Evita recarregar se os dados não mudaram
     const currentHash = hashData(data);
     if (currentHash === lastDataHash.current && insights) return;
 
@@ -431,44 +430,73 @@ const useSmartCopilot = (data, viewMode, isEnabled) => {
       const storedKey = getStoredKey();
 
       if (storedKey) {
-        // 3. Preparação dos dados para a IA
+        // 2. Preparação dos Dados (Contexto Enriquecido)
         const contextData = JSON.stringify({
-          perfil: data.clientData.profile,
-          idadeAtual: data.clientData.currentAge,
-          cenario: data.isStressTest ? "CENÁRIO DE STRESS (CRISE)" : "CENÁRIO BASE (NORMAL)",
-          detalhesStress: data.isStressTest ? "Inflação +1.5%, Rentabilidade -2.0%" : "Premissas padrão",
-          patrimonioTotal: formatCurrency(data.kpis.totalWealthNow),
-          coberturaMeta: formatPercent(data.kpis.goalPercentage),
-          anosAteQuebrar: data.kpis.brokeAge || "Nunca (Sustentável)",
-          status: data.kpis.sustainabilityStatus
+          perfil_cliente: data.clientData.profile,
+          idade: data.clientData.currentAge,
+          patrimonio_atual: formatCurrency(data.kpis.totalWealthNow),
+          meta_financeira: formatCurrency(data.kpis.wealthGoal),
+          cobertura_meta: formatPercent(data.kpis.goalPercentage),
+          status_sustentabilidade: data.kpis.sustainabilityStatus,
+          cenario_analisado: data.isStressTest ? "STRESS (Crise Econômica)" : "BASE (Cenário Padrão)",
+          impacto_stress: data.isStressTest ? "Inflação projetada +1.5%, Rentabilidade real -2.0%" : "Premissas de mercado normais",
+          idade_quebra: data.kpis.brokeAge || "Perpetuidade (Não quebra)"
         });
         
-        const fullPrompt = `
-        ATUAÇÃO: Wealth Planner Sênior (Consultor Financeiro de Elite).
-        CONTEXTO: ${contextData}
-
-        TAREFA: Gere uma análise técnica e comportamental.
+        // 3. O PROMPT "SNIPER" (Direto e Profissional)
+const fullPrompt = `
+        ROLE: Wealth Planner Sênior (CFA) focado em Matemática Financeira.
+        TONE: Direto, numérico e resolutivo. Nada de conselhos genéricos.
         
-        FORMATO JSON OBRIGATÓRIO (SEM MARKDOWN):
+        DADOS DO CLIENTE:
+        ${contextData}
+
+        MANDAMENTOS (Siga estritamente):
+        1. PROIBIDO frases como "consulte um especialista" ou "diversifique".
+        2. SE O STATUS FOR "CRÍTICO" ou "ATENÇÃO":
+           - Você DEVE dar duas opções claras: "Ou aumenta o aporte em aprox. X%" OU "Adia a aposentadoria em Y anos".
+           - Faça uma estimativa numérica baseada nos dados.
+        3. SE O STATUS FOR "CONFORTÁVEL":
+           - Foque em Blindagem Patrimonial e Eficiência Tributária.
+        4. O "clientFriendlyExplanation" deve ser um puxão de orelha educado ou um parabéns fundamentado.
+
+        SAÍDA JSON OBRIGATÓRIA:
         {
-          "executiveSummary": "Resumo técnico de 2 linhas focado na viabilidade.",
-          "clientFriendlyExplanation": "Explicação empática para o cliente. Se for Stress, explique o impacto.",
-          "keyRisks": [{"severity": "high", "text": "Risco principal detectado"}],
-          "optimizationSuggestions": ["Sugestão tática 1", "Sugestão tática 2"]
+          "executiveSummary": "Frase curta de impacto. Ex: 'O plano atual é insustentável e levará à ruína aos 75 anos se não houver ajuste imediato.'",
+          "clientFriendlyExplanation": "Explicação direta. Ex: 'Para manter esse padrão de vida, a conta não fecha. Você tem duas saídas: poupar R$ X a mais por mês ou aceitar trabalhar até os Y anos.'",
+          "keyRisks": [
+            {"severity": "high", "text": "Risco principal (ex: Inflação corroendo o poder de compra)."},
+            {"severity": "medium", "text": "Risco secundário."}
+          ],
+          "optimizationSuggestions": [
+            "Ação Prática 1 (ex: Aumentar aporte mensal em 15%)",
+            "Ação Prática 2 (ex: Reduzir custo de vida em 10% agora)"
+          ]
         }`;
         
-        // 4. CHAMADA DE API (MODELO LITE + MÉTODO POST CORRIGIDO)
+        // 4. CHAMADA DE API COM AJUSTE DE TEMPERATURA (Analítico)
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${storedKey}`, {
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: fullPrompt }] }]
+            contents: [{ parts: [{ text: fullPrompt }] }],
+            // CONFIGURAÇÃO TÉCNICA (O Segredo da Qualidade)
+            generationConfig: {
+              temperature: 0.2,      // Baixa criatividade = Mais precisão/lógica
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1000,
+            }
           })
         });
 
         if (!response.ok) {
-            const errData = await response.json();
-            console.error("Erro API:", errData);
+            // Se der erro 429 (Muitos cliques), usamos o fallback silenciosamente
+            if (response.status === 429) {
+                console.warn("Cota excedida, usando fallback local.");
+                setInsights(getFallbackMockData(data, viewMode));
+                return;
+            }
             throw new Error(`Erro API: ${response.status}`);
         }
         
@@ -485,21 +513,19 @@ const useSmartCopilot = (data, viewMode, isEnabled) => {
            throw new Error("Resposta vazia da IA");
         }
       } else {
-        // Sem chave, usa fallback
+        // Sem chave
         await new Promise(resolve => setTimeout(resolve, 1500));
         setInsights(getFallbackMockData(data, viewMode));
       }
 
     } catch (err) {
       console.warn("Copilot Error:", err);
-      // Fallback silencioso para não travar a tela
       setInsights(getFallbackMockData(data, viewMode)); 
     } finally {
       setLoading(false);
     }
   }, [data, viewMode, isEnabled, insights]);
 
-  // Reseta se mudar de cliente
   useEffect(() => {
     setInsights(null); 
   }, [data.clientData.id]);
