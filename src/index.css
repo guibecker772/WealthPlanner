@@ -1,3 +1,46 @@
+/* src/index.css */
+
+/* Imports das novas fontes Inter e Manrope */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+/* Diretivas do Tailwind CSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Camada base para estilos globais */
+@layer base {
+  /* Aplica as novas cores e fontes padrão no elemento raiz */
+  html {
+    scroll-behavior: smooth;
+    @apply bg-background text-text-primary font-sans overflow-hidden h-full;
+  }
+
+  body {
+    @apply antialiased h-full;
+  }
+}
+
+/* Camada de utilitários customizados */
+@layer utilities {
+  /* Utilitário para esconder a barra de rolagem (usado nos containers internos) */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Utilitário para animação suave de entrada */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+}
+
+/* Definição da animação */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
