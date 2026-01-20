@@ -648,13 +648,24 @@ const baseKpis = engineOutput?.kpis || {};
   }, [scenarioId, trackingByScenario, clientData, isStressTest, selectedYear]);
 
   // ✅ EM TRACKING: original = planejado ancorado; adjusted = real ancorado
-  const seriesOriginal = showTracking
-    ? tracking?.engines?.planejado?.series || engineOutput?.series || []
-    : engineOutput?.series || [];
+const trackingOriginalSeries =
+  tracking?.engines?.planejado?.series ||
+  tracking?.engines?.original?.series ||
+  tracking?.engines?.baseline?.series ||
+  [];
 
-  const seriesAdjusted = showTracking
-    ? tracking?.engines?.ajustado?.series || engineOutput?.series || []
-    : engineOutput?.series || [];
+const trackingAdjustedSeries =
+  tracking?.engines?.ajustado?.series ||
+  tracking?.engines?.updated?.series ||
+  [];
+
+const seriesOriginal = showTracking
+  ? (trackingOriginalSeries.length ? trackingOriginalSeries : (engineOutput?.series || []))
+  : (engineOutput?.series || []);
+
+const seriesAdjusted = showTracking
+  ? (trackingAdjustedSeries.length ? trackingAdjustedSeries : (engineOutput?.series || []))
+  : (engineOutput?.series || []);
 
   const displayedTopKpis = useMemo(() => {
     if (!showTracking) return kpisNormalized;
