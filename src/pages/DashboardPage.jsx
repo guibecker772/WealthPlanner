@@ -587,8 +587,7 @@ export default function DashboardPage({
     }
   }, [clientData, isStressTest]);
 
-  const baseKpis =
-    analysis?.kpis && Object.keys(analysis.kpis).length ? analysis.kpis : engineOutput.kpis || {};
+const baseKpis = engineOutput?.kpis || {};
 
   const kpisNormalized = useMemo(() => {
     const hasLegacy = baseKpis && ("goalPercentage" in baseKpis || "requiredCapital" in baseKpis);
