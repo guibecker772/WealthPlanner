@@ -1,14 +1,4 @@
 // src/engine/FinancialEngine.js
-// NOVO + CORRIGIDO
-// - Mantém fallbacks do motor antigo (campos diferentes)
-// - Suporta Cenários: contributionTimeline OU contributionRanges, cashInEvents, aporte negativo
-// - Timeline (inclui resgates) funciona mesmo após contributionEndAge/aposentadoria
-// - Aposentadoria/Meta usa SOMENTE patrimônio financeiro (alta liquidez)
-// - Sucessão usa TOTAL (financeiro + bens), separando corretamente
-// - ✅ Sucessão: Honorários (%) e Custas (%) (remove custas fixas por padrão)
-// - ✅ PERFIL: retorno nominal passa a respeitar clientData.profile (8/10/12)
-// - ✅ SÉRIE: inclui ponto inicial no "AGORA" (idade atual) e depois evolui ano a ano
-
 import { CONFIG } from "../constants/config";
 
 // ---------- Utils ----------
@@ -43,11 +33,14 @@ function normalizeText(s) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function annualToMonthlyRate(annualRealRate) {
+  const r = Number(annualRealRate);
+  if (!Number.isFinite(r)) return 0;
+  return Math.pow(1 + r, 1 / 12) - 1;
+}
+
 /**
  * Seleciona a rentabilidade nominal conforme perfil.
- * - Conservador -> returnRateConservative
- * - Moderado -> returnRateModerate
- * - Arrojado/Agressivo -> returnRateBold
  */
 function pickNominalReturnByProfile(clientData = {}) {
   const profile = normalizeText(clientData?.profile ?? clientData?.perfil ?? "moderado");
@@ -63,8 +56,7 @@ function pickNominalReturnByProfile(clientData = {}) {
 }
 
 /**
- * Normaliza o "bucket" do ativo para separar financeiro vs bens.
- * Aceita enums (real_estate) e labels do UI (Imóvel/Financeiro etc).
+ * Bucket do ativo (financeiro vs bens)
  */
 function normalizeAssetBucket(asset) {
   const rawType = asset?.type ?? asset?.assetType ?? asset?.category ?? "";
@@ -103,28 +95,14 @@ function splitAssets(assets = []) {
   return { financialTotal, illiquidTotal, total };
 }
 
-// ---------- Contribution timeline (Cenários) ----------
+// ---------- Contribution timeline ----------
 function normalizeTimelineRule(rule = {}) {
   const startAge = toNumber(
-    rule.startAge ??
-      rule.fromAge ??
-      rule.from ??
-      rule.dos ??
-      rule.ageStart ??
-      rule.inicio ??
-      0,
+    rule.startAge ?? rule.fromAge ?? rule.from ?? rule.dos ?? rule.ageStart ?? rule.inicio ?? 0,
     0
   );
 
-  const endAgeRaw =
-    rule.endAge ??
-    rule.toAge ??
-    rule.to ??
-    rule.ate ??
-    rule.ageEnd ??
-    rule.fim ??
-    null;
-
+  const endAgeRaw = rule.endAge ?? rule.toAge ?? rule.to ?? rule.ate ?? rule.ageEnd ?? rule.fim ?? null;
   const endAge = endAgeRaw == null ? 120 : toNumber(endAgeRaw, 120);
 
   let monthlyValue = toNumber(
@@ -156,10 +134,6 @@ function normalizeTimelineRule(rule = {}) {
   };
 }
 
-/**
- * Pega o aporte mensal vigente naquela idade.
- * Regras mais recentes (maior startAge) têm prioridade.
- */
 function getMonthlyContributionAtAge(age, baseContribution, timeline = []) {
   const rules = Array.isArray(timeline) ? timeline : [];
   const activeRules = rules.filter((r) => {
@@ -190,8 +164,8 @@ const DEFAULT_ITCMD_BY_STATE = {
   DF: 0.06,
 };
 
-const DEFAULT_LEGAL_PCT = 0.05; // 5%
-const DEFAULT_FEES_PCT = 0.02; // 2%
+const DEFAULT_LEGAL_PCT = 0.05;
+const DEFAULT_FEES_PCT = 0.02;
 
 function getSuccessionConfigFromCosts(costs = {}, state) {
   const itcmdFromConfig = (CONFIG?.ITCMD_RATES && state && CONFIG.ITCMD_RATES[state]) || null;
@@ -202,26 +176,16 @@ function getSuccessionConfigFromCosts(costs = {}, state) {
   );
 
   const legalPct = normalizeRate(
-    costs?.legalPct ??
-      costs?.honorariosPct ??
-      CONFIG?.SUCCESSION_LEGAL_PCT ??
-      DEFAULT_LEGAL_PCT,
+    costs?.legalPct ?? costs?.honorariosPct ?? CONFIG?.SUCCESSION_LEGAL_PCT ?? DEFAULT_LEGAL_PCT,
     DEFAULT_LEGAL_PCT
   );
 
   const feesPct = normalizeRate(
-    costs?.feesPct ??
-      costs?.custasPct ??
-      costs?.custasPercent ??
-      CONFIG?.SUCCESSION_FEES_PCT ??
-      DEFAULT_FEES_PCT,
+    costs?.feesPct ?? costs?.custasPct ?? costs?.custasPercent ?? CONFIG?.SUCCESSION_FEES_PCT ?? DEFAULT_FEES_PCT,
     DEFAULT_FEES_PCT
   );
 
-  const feesFixed = Math.max(
-    0,
-    toNumber(costs?.feesFixed ?? costs?.custasFixas ?? CONFIG?.SUCCESSION_FEES_FIXED, 0)
-  );
+  const feesFixed = Math.max(0, toNumber(costs?.feesFixed ?? costs?.custasFixas ?? CONFIG?.SUCCESSION_FEES_FIXED, 0));
 
   return {
     itcmdRate: clamp(itcmdRate, 0, 0.2),
@@ -304,10 +268,7 @@ function run(clientData = {}, isStressActiveExternal = false) {
     retirementAge
   );
 
-  const maxAge = toNumber(
-    clientData.maxAge ?? clientData.lifeExpectancy ?? clientData.expectativaVida,
-    90
-  );
+  const maxAge = toNumber(clientData.maxAge ?? clientData.lifeExpectancy ?? clientData.expectativaVida, 90);
 
   const baseMonthlyContribution = toNumber(
     clientData.monthlyContribution ?? clientData.monthlyAporte ?? clientData.aporteMensal ?? clientData.aporte ?? 0,
@@ -350,6 +311,8 @@ function run(clientData = {}, isStressActiveExternal = false) {
   const effNominal = isStress ? nominalReturn - stressRetSub : nominalReturn;
   const effReal = (1 + effNominal) / Math.max(1e-9, 1 + effInfl) - 1;
 
+  const monthlyRealRate = annualToMonthlyRate(effReal);
+
   const { financialTotal: initialFinancial, illiquidTotal: initialIlliquid, total: totalNow } = splitAssets(
     clientData.assets || []
   );
@@ -384,9 +347,8 @@ function run(clientData = {}, isStressActiveExternal = false) {
 
   const contributionTimeline = rawTimeline.map(normalizeTimelineRule).filter((r) => r.enabled !== false);
 
-  // ✅ NOVO MODELO DE SÉRIE:
-  // point(age) = patrimônio no "aniversário" daquela idade (estado naquele instante).
-  // Evoluímos do age -> age+1 aplicando retorno/aportes do ano e eventos do "age+1".
+  // ✅ SÉRIE alinhada ao Tracking:
+  // Dentro de cada idade, simulamos 12 meses: aporte do mês -> retorno do mês.
   const startAge = clamp(currentAge, 0, 120);
   const endAge = clamp(maxAge, startAge, 120);
 
@@ -408,23 +370,25 @@ function run(clientData = {}, isStressActiveExternal = false) {
   });
 
   for (let age = startAge; age < endAge; age++) {
-    // retorno durante o ano [age, age+1)
-    wealth = wealth * (1 + effReal);
-
-    // aportes durante o ano [age, age+1)
     const baseForThisAge = age < contributionEndAge ? baseMonthlyContribution : 0;
-    const monthly = getMonthlyContributionAtAge(age, baseForThisAge, contributionTimeline);
-    const yearlyContribution = toNumber(monthly, 0) * 12;
 
-    if (yearlyContribution >= 0) wealth += yearlyContribution;
-    else wealth = Math.max(0, wealth + yearlyContribution);
+    // 12 meses dentro do ano dessa idade
+    for (let m = 1; m <= 12; m++) {
+      const monthly = getMonthlyContributionAtAge(age, baseForThisAge, contributionTimeline);
 
-    // retirada de renda durante o ano [age, age+1) se já está aposentado
-    if (age >= retirementAge && desiredMonthlyIncome > 0) {
-      wealth = Math.max(0, wealth - desiredMonthlyIncome * 12);
+      // aporte no mês
+      wealth += toNumber(monthly, 0);
+
+      // retorno do mês
+      wealth *= 1 + monthlyRealRate;
+
+      // retirada mensal na aposentadoria
+      if (age >= retirementAge && desiredMonthlyIncome > 0) {
+        wealth = Math.max(0, wealth - desiredMonthlyIncome);
+      }
     }
 
-    // eventos no "aniversário" de age+1
+    // eventos no "aniversário" (age+1)
     const nextAge = age + 1;
 
     const cashIn = cashInByAge.get(nextAge) || 0;
@@ -441,7 +405,6 @@ function run(clientData = {}, isStressActiveExternal = false) {
     });
   }
 
-  // capital na aposentadoria = ponto no "aniversário" do retirementAge
   const atRet = series.find((p) => p.age === retirementAge) || series[series.length - 1] || { wealth: 0 };
   const capitalAposentadoria = toNumber(atRet.wealth, 0);
 
@@ -474,6 +437,7 @@ function run(clientData = {}, isStressActiveExternal = false) {
       effInfl,
       nominalReturn,
       inflation,
+      monthlyRealRate,
       profile: clientData?.profile,
       pickedReturnByProfile: pickNominalReturnByProfile(clientData),
       retirementAge,

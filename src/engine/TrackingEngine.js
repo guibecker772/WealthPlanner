@@ -29,16 +29,29 @@ function yearsAvailable(monthly) {
   return Array.from(set).sort((a, b) => a - b);
 }
 
+function annualToMonthlyRate(annualRealRate) {
+  const r = Number(annualRealRate);
+  if (!Number.isFinite(r)) return 0;
+  // (1+r)^(1/12) - 1
+  return Math.pow(1 + r, 1 / 12) - 1;
+}
+
 export default class TrackingEngine {
   /**
    * Tracking:
-   * - patrimônioRealHoje: calcula usando aportes reais + rentabilidades reais
-   * - patrimônioPlanejadoHoje: usa aportes planejados no mesmo período
+   * - patrimonioRealHoje: calcula usando aportes reais + rentabilidades reais (mês a mês)
+   * - patrimonioPlanejadoHoje: calcula usando aportes planejados + retorno ASSUMIDO do plano (mês a mês)
    * - gera 2 engines ancorados no "AGORA":
    *    - planejado (plano original ancorado no planejadoHoje)
    *    - ajustado (plano atualizado ancorado no realHoje)
    */
-  static run({ scenarioId, clientData, trackingByScenario, isStressTest = false, selectedYear = null }) {
+  static run({
+    scenarioId,
+    clientData,
+    trackingByScenario,
+    isStressTest = false,
+    selectedYear = null,
+  }) {
     const tracking = trackingByScenario?.[scenarioId];
 
     if (!tracking || !Array.isArray(tracking.monthly) || tracking.monthly.length === 0) {
@@ -54,7 +67,7 @@ export default class TrackingEngine {
       return ma - mb;
     });
 
-    // Engine base (plano original "do zero") só para referência/compat
+    // Engine base só para pegar patrimonio inicial + taxa real do plano (effReal)
     const baseEngine = FinancialEngine.run(clientData || {}, isStressTest);
 
     const patrimonioInicial = Number(
@@ -63,16 +76,17 @@ export default class TrackingEngine {
         0
     );
 
-    // 1) HISTÓRICO REAL (TOTAL)
+    const effRealAnnual = Number(baseEngine?.kpis?._inputs?.effReal ?? 0);
+    const effRealMonthly = annualToMonthlyRate(effRealAnnual);
+
+    // 1) HISTÓRICO REAL (TOTAL) — mês a mês (aporte -> retorno)
     let patrimonioReal = patrimonioInicial;
 
     monthlyAll.forEach((m) => {
       const aporteReal = Number(m?.aporteReal || 0);
       const rentab = pctToRate(m?.rentabilidadeRealPct || 0);
 
-      // contribuição no mês
       patrimonioReal += aporteReal;
-      // retorno do mês
       patrimonioReal *= 1 + rentab;
     });
 
@@ -83,11 +97,18 @@ export default class TrackingEngine {
     const inflacaoAcumuladaPct = (inflacaoFactorTotal - 1) * 100;
     const retornoRealAcumuladoPct = (retornoFactorTotal - 1) * 100;
 
-    // 2) PLANEJADO (TOTAL) no período do tracking
+    // 2) PLANEJADO (TOTAL) no período — mês a mês (aporte planejado -> retorno ASSUMIDO do plano)
+    let patrimonioPlanejadoHoje = patrimonioInicial;
+
+    monthlyAll.forEach((m) => {
+      const aportePlanejado = Number(m?.aportePlanejado || 0);
+      patrimonioPlanejadoHoje += aportePlanejado;
+      patrimonioPlanejadoHoje *= 1 + effRealMonthly;
+    });
+
     const aportePlanejadoTotal = sum(monthlyAll, (m) => Number(m?.aportePlanejado || 0));
     const aporteRealTotal = sum(monthlyAll, (m) => Number(m?.aporteReal || 0));
 
-    const patrimonioPlanejadoHoje = patrimonioInicial + aportePlanejadoTotal;
     const deltaPatrimonio = patrimonioReal - patrimonioPlanejadoHoje;
 
     // 3) Engines ancorados no "AGORA"
@@ -116,7 +137,7 @@ export default class TrackingEngine {
     const plannedEngine = FinancialEngine.run(clientDataPlannedAnchored, isStressTest);
     const adjustedEngine = FinancialEngine.run(clientDataRealAnchored, isStressTest);
 
-    // 4) YEAR SUMMARY (sempre retorna, mesmo se não houver lançamentos)
+    // 4) YEAR SUMMARY
     const years = yearsAvailable(monthlyAll);
     const ySel = selectedYear ? Number(selectedYear) : null;
 
@@ -147,11 +168,15 @@ export default class TrackingEngine {
         : null;
 
     // 5) KPIs comparativos (no "AGORA")
-    const rendaOriginal = plannedEngine?.kpis?.rendaSustentavelMensal ?? plannedEngine?.kpis?.sustainableIncome ?? 0;
-    const rendaAtualizada = adjustedEngine?.kpis?.rendaSustentavelMensal ?? adjustedEngine?.kpis?.sustainableIncome ?? 0;
+    const rendaOriginal =
+      plannedEngine?.kpis?.rendaSustentavelMensal ?? plannedEngine?.kpis?.sustainableIncome ?? 0;
+    const rendaAtualizada =
+      adjustedEngine?.kpis?.rendaSustentavelMensal ?? adjustedEngine?.kpis?.sustainableIncome ?? 0;
 
-    const coberturaOriginal = plannedEngine?.kpis?.coberturaMetaPct ?? plannedEngine?.kpis?.goalPercentage ?? 0;
-    const coberturaAtualizada = adjustedEngine?.kpis?.coberturaMetaPct ?? adjustedEngine?.kpis?.goalPercentage ?? 0;
+    const coberturaOriginal =
+      plannedEngine?.kpis?.coberturaMetaPct ?? plannedEngine?.kpis?.goalPercentage ?? 0;
+    const coberturaAtualizada =
+      adjustedEngine?.kpis?.coberturaMetaPct ?? adjustedEngine?.kpis?.goalPercentage ?? 0;
 
     return {
       meta: {
@@ -191,11 +216,10 @@ export default class TrackingEngine {
         delta: coberturaAtualizada - coberturaOriginal,
       },
 
-      // ✅ IMPORTANTE: agora temos o planejado ancorado
       engines: {
-        base: baseEngine,       // só referência
-        planejado: plannedEngine, // "plano original" no AGORA
-        ajustado: adjustedEngine, // "plano atualizado" no AGORA
+        base: baseEngine,
+        planejado: plannedEngine,
+        ajustado: adjustedEngine,
       },
     };
   }

@@ -660,12 +660,12 @@ const trackingAdjustedSeries =
   [];
 
 const seriesOriginal = showTracking
-  ? (trackingOriginalSeries.length ? trackingOriginalSeries : (engineOutput?.series || []))
-  : (engineOutput?.series || []);
+  ? tracking?.engines?.original?.series || tracking?.engines?.planejado?.series || engineOutput?.series || []
+  : engineOutput?.series || [];
 
 const seriesAdjusted = showTracking
-  ? (trackingAdjustedSeries.length ? trackingAdjustedSeries : (engineOutput?.series || []))
-  : (engineOutput?.series || []);
+  ? tracking?.engines?.ajustado?.series || engineOutput?.series || []
+  : engineOutput?.series || [];
 
   const displayedTopKpis = useMemo(() => {
     if (!showTracking) return kpisNormalized;

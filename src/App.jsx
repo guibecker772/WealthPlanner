@@ -5,13 +5,13 @@ import {
   Wallet,
   Flag,
   Scale,
-  Settings,
   Users,
   LogOut,
   GitBranch,
   Plus,
   Save,
   Trash2,
+  UserCircle2, // ✅ novo ícone para "Dados do Cliente"
 } from "lucide-react";
 
 import FinancialEngine from "./engine/FinancialEngine";
@@ -55,6 +55,7 @@ const DEFAULT_CLIENT = {
   profile: "Conservador",
 
   currentAge: "",
+  birthMonth: 1, // ✅ NOVO: mês de aniversário (1..12)
   contributionEndAge: "",
   retirementAge: "",
   lifeExpectancy: "",
@@ -82,6 +83,11 @@ function ensureClientShape(data) {
   d.contributionRanges = Array.isArray(d.contributionRanges) ? d.contributionRanges : [];
   d.contributionTimeline = Array.isArray(d.contributionTimeline) ? d.contributionTimeline : [];
   d.cashInEvents = Array.isArray(d.cashInEvents) ? d.cashInEvents : [];
+
+  // ✅ garante birthMonth válido
+  const bm = Number(d.birthMonth);
+  d.birthMonth = Number.isFinite(bm) && bm >= 1 && bm <= 12 ? bm : 1;
+
   return d;
 }
 
@@ -134,7 +140,8 @@ function MainSidebar({ activeTab, setActiveTab, logout }) {
     { id: "scenarios", label: "Cenários", icon: GitBranch },
     { id: "goals", label: "Metas", icon: Flag },
     { id: "succession", label: "Sucessão", icon: Scale },
-    { id: "settings", label: "Ajustes", icon: Settings },
+    // ✅ Renome + ícone
+    { id: "settings", label: "Dados do Cliente", icon: UserCircle2 },
   ];
 
   return (
@@ -524,7 +531,7 @@ export default function App() {
               {activeTab === "scenarios" && "Simulação de Cenários"}
               {activeTab === "goals" && "Metas & Objetivos"}
               {activeTab === "succession" && "Planejamento Sucessório"}
-              {activeTab === "settings" && "Ajustes & Premissas"}
+              {activeTab === "settings" && "Dados do Cliente"} {/* ✅ atualizado */}
             </h1>
             <p className="text-sm text-text-secondary mt-1 font-medium flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
@@ -605,6 +612,7 @@ export default function App() {
               {activeTab === "settings" && (
                 <SettingsPage
                   clientData={clientData}
+                  kpis={analysis?.kpis}
                   handleUpdate={updateField}
                   readOnly={readOnly}
                   aiEnabled={aiEnabled}

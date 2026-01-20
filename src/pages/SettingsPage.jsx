@@ -3,7 +3,7 @@ import React, { useMemo } from "react";
 import {
   ToggleLeft,
   ToggleRight,
-  Settings,
+  UserCircle2, // ✅ ícone novo no header
   User,
   TrendingUp,
   Calendar,
@@ -25,6 +25,22 @@ const PROFILE_OPTIONS = [
   { value: "Conservador", label: "Conservador" },
   { value: "Moderado", label: "Moderado" },
   { value: "Arrojado", label: "Arrojado" },
+];
+
+// ✅ Mês de aniversário (1..12)
+const BIRTH_MONTH_OPTIONS = [
+  { value: 1, label: "Janeiro" },
+  { value: 2, label: "Fevereiro" },
+  { value: 3, label: "Março" },
+  { value: 4, label: "Abril" },
+  { value: 5, label: "Maio" },
+  { value: 6, label: "Junho" },
+  { value: 7, label: "Julho" },
+  { value: 8, label: "Agosto" },
+  { value: 9, label: "Setembro" },
+  { value: 10, label: "Outubro" },
+  { value: 11, label: "Novembro" },
+  { value: 12, label: "Dezembro" },
 ];
 
 // ✅ defaults pedidos
@@ -95,17 +111,22 @@ export default function SettingsPage({
     handleUpdate("successionCosts", next);
   };
 
+  const birthMonthValue = (() => {
+    const bm = Number(clientData.birthMonth);
+    return Number.isFinite(bm) && bm >= 1 && bm <= 12 ? bm : 1;
+  })();
+
   return (
     <div className="space-y-8 animate-fade-in pb-20">
       {/* Cabeçalho + Botão PDF (canto superior direito) */}
       <div className="flex items-start justify-between gap-4 mb-8 border-b border-white/10 pb-4">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-navy-800/50 rounded-xl border border-white/5 shadow-inner">
-            <Settings className="text-gold-400" size={28} />
+            <UserCircle2 className="text-gold-400" size={28} />
           </div>
           <div>
             <h2 className="text-3xl font-serif text-white tracking-wide">
-              Ajustes & Premissas
+              Dados do Cliente
             </h2>
             <p className="text-slate-400 mt-1">
               Configure os dados do cliente e as bases do cálculo.
@@ -127,7 +148,7 @@ export default function SettingsPage({
         {/* --- COLUNA DA ESQUERDA --- */}
         <div className="space-y-8">
           {/* Card: Dados do Cliente */}
-          <Card title="Dados da Simulação" icon={User}>
+          <Card title="Dados do Cliente" icon={User}>
             <div className="grid grid-cols-1 gap-5 relative z-10">
               <InputField
                 label="Nome do Cliente"
@@ -144,6 +165,15 @@ export default function SettingsPage({
                 type="text"
                 readOnly={readOnly}
                 placeholder="Ex: Cenário Base"
+              />
+
+              {/* ✅ NOVO: mês de aniversário */}
+              <SelectField
+                label="Mês de aniversário"
+                value={birthMonthValue}
+                options={BIRTH_MONTH_OPTIONS}
+                onChange={(v) => handleUpdate("birthMonth", Number(v) || 1)}
+                disabled={readOnly}
               />
 
               <div className="pt-4 border-t border-white/10 space-y-4">
@@ -228,9 +258,7 @@ export default function SettingsPage({
                 type="number"
                 step="1"
                 value={clientData.monthlyCostRetirement}
-                onChange={(v) =>
-                  handleNumericChange("monthlyCostRetirement", v)
-                }
+                onChange={(v) => handleNumericChange("monthlyCostRetirement", v)}
                 readOnly={readOnly}
                 placeholder="Ex: 15000"
               />
@@ -355,9 +383,7 @@ export default function SettingsPage({
                     type="number"
                     step="0.1"
                     value={clientData.returnRateConservative}
-                    onChange={(v) =>
-                      handleNumericChange("returnRateConservative", v)
-                    }
+                    onChange={(v) => handleNumericChange("returnRateConservative", v)}
                     readOnly={readOnly}
                     suffix="%"
                     placeholder="Ex: 8.0"
@@ -367,9 +393,7 @@ export default function SettingsPage({
                     type="number"
                     step="0.1"
                     value={clientData.returnRateModerate}
-                    onChange={(v) =>
-                      handleNumericChange("returnRateModerate", v)
-                    }
+                    onChange={(v) => handleNumericChange("returnRateModerate", v)}
                     readOnly={readOnly}
                     suffix="%"
                     placeholder="Ex: 10.0"
@@ -412,11 +436,7 @@ export default function SettingsPage({
                         : "bg-slate-700/50 text-slate-400"
                     }`}
                   >
-                    {aiEnabled ? (
-                      <ToggleRight size={32} />
-                    ) : (
-                      <ToggleLeft size={32} />
-                    )}
+                    {aiEnabled ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                   </button>
                 </div>
               </Card>
