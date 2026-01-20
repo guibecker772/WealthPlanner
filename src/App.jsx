@@ -32,9 +32,11 @@ const STORAGE_VIEW = "planner_view_mode_v1";
 const STORAGE_AI = "planner_ai_enabled_v1";
 const STORAGE_STRESS = "planner_stress_enabled_v1";
 
-// ✅ As chaves de simulação agora serão POR USUÁRIO (user.uid)
 const STORAGE_SIMS_BASE = "planner_simulations_v1";
 const STORAGE_ACTIVE_SIM_BASE = "planner_active_sim_id_v1";
+
+// B1
+const STORAGE_TRACKING_BASE = "planner_tracking_by_scenario_v1";
 
 function keyForUser(baseKey, uid) {
   return uid ? `${baseKey}__${uid}` : `${baseKey}__anon`;
@@ -45,7 +47,6 @@ function genId() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
-// ✅ Garanta que arrays existam desde o início
 const DEFAULT_CLIENT = {
   name: "",
   scenarioName: "Cenário Base",
@@ -112,6 +113,18 @@ function loadSimulations(uid) {
 function loadActiveSimId(uid) {
   const activeKey = keyForUser(STORAGE_ACTIVE_SIM_BASE, uid);
   return localStorage.getItem(activeKey) || null;
+}
+
+// B1: tracking store
+function loadTrackingByScenario(uid) {
+  const key = keyForUser(STORAGE_TRACKING_BASE, uid);
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 function MainSidebar({ activeTab, setActiveTab, logout }) {
@@ -312,11 +325,13 @@ function SimulationsSidebar({
 
 export default function App() {
   const { user, loading, logout } = useAuth();
-
   const uid = user?.uid || null;
 
   const simsKey = keyForUser(STORAGE_SIMS_BASE, uid);
   const activeKey = keyForUser(STORAGE_ACTIVE_SIM_BASE, uid);
+
+  // B1
+  const trackingKey = keyForUser(STORAGE_TRACKING_BASE, uid);
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [viewMode, setViewMode] = useState(() => localStorage.getItem(STORAGE_VIEW) || "advisor");
@@ -325,19 +340,17 @@ export default function App() {
 
   const readOnly = viewMode === "client";
 
-  // ✅ Simulações (inicializa vazio e carrega quando o user existir)
   const [simulations, setSimulations] = useState([]);
   const [activeSimId, setActiveSimId] = useState(null);
-
-  // ✅ Estado REAL do cliente = simulação ativa
   const [clientData, setClientData] = useState(ensureClientShape(DEFAULT_CLIENT));
 
-  // Persist view settings (global mesmo)
+  // B1
+  const [trackingByScenario, setTrackingByScenario] = useState({});
+
   useEffect(() => localStorage.setItem(STORAGE_VIEW, viewMode), [viewMode]);
   useEffect(() => localStorage.setItem(STORAGE_AI, String(aiEnabled)), [aiEnabled]);
   useEffect(() => localStorage.setItem(STORAGE_STRESS, String(isStressTest)), [isStressTest]);
 
-  // ✅ Carrega sims quando o usuário troca (SEPARADO POR UID)
   useEffect(() => {
     if (!uid) return;
 
@@ -352,22 +365,27 @@ export default function App() {
 
     const chosen = loadedSims.find((s) => s.id === nextActiveId) || loadedSims[0];
     setClientData(ensureClientShape(chosen?.data || DEFAULT_CLIENT));
+
+    const loadedTracking = loadTrackingByScenario(uid);
+    setTrackingByScenario(loadedTracking);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
-  // ✅ Persiste sims por usuário
   useEffect(() => {
     if (!uid) return;
     localStorage.setItem(simsKey, JSON.stringify(simulations));
   }, [simulations, simsKey, uid]);
 
-  // ✅ Persiste activeSimId por usuário
   useEffect(() => {
     if (!uid) return;
     if (activeSimId) localStorage.setItem(activeKey, activeSimId);
   }, [activeSimId, activeKey, uid]);
 
-  // Garantir activeSimId válido
+  useEffect(() => {
+    if (!uid) return;
+    localStorage.setItem(trackingKey, JSON.stringify(trackingByScenario || {}));
+  }, [trackingByScenario, trackingKey, uid]);
+
   useEffect(() => {
     if (!simulations.length) return;
 
@@ -386,7 +404,9 @@ export default function App() {
     [simulations, activeSimId]
   );
 
-  // ✅ updateField REAL (imutável) + sincroniza simulação ativa
+  // ✅ IMPORTANTÍSSIMO: sempre temos um scenarioId válido (fallback)
+  const resolvedScenarioId = activeSimId || activeSimulation?.id || null;
+
   const updateField = useCallback(
     (field, value) => {
       setClientData((prev) => {
@@ -394,7 +414,7 @@ export default function App() {
 
         setSimulations((sims) =>
           sims.map((s) => {
-            if (s.id !== activeSimId) return s;
+            if (s.id !== resolvedScenarioId) return s; // ✅ usa resolvedScenarioId
             const nextName =
               field === "scenarioName"
                 ? String(value || "Cenário")
@@ -407,7 +427,7 @@ export default function App() {
         return next;
       });
     },
-    [activeSimId]
+    [resolvedScenarioId]
   );
 
   const analysis = useMemo(() => FinancialEngine.run(clientData, isStressTest), [clientData, isStressTest]);
@@ -438,8 +458,8 @@ export default function App() {
   const handleDeleteSim = useCallback(() => {
     if (simulations.length <= 1) return;
 
-    const idx = simulations.findIndex((s) => s.id === activeSimId);
-    const nextList = simulations.filter((s) => s.id !== activeSimId);
+    const idx = simulations.findIndex((s) => s.id === resolvedScenarioId);
+    const nextList = simulations.filter((s) => s.id !== resolvedScenarioId);
     const nextActive = nextList[Math.max(0, idx - 1)]?.id || nextList[0]?.id;
 
     setSimulations(nextList);
@@ -447,17 +467,17 @@ export default function App() {
 
     const sim = nextList.find((s) => s.id === nextActive);
     if (sim) setClientData(ensureClientShape(sim.data));
-  }, [activeSimId, simulations]);
+  }, [resolvedScenarioId, simulations]);
 
   const handleSaveSim = useCallback(() => {
     setSimulations((sims) =>
       sims.map((s) => {
-        if (s.id !== activeSimId) return s;
+        if (s.id !== resolvedScenarioId) return s;
         const name = s.name || clientData.scenarioName || "Cenário";
         return { ...s, name, data: ensureClientShape(clientData), updatedAt: Date.now() };
       })
     );
-  }, [activeSimId, clientData]);
+  }, [resolvedScenarioId, clientData]);
 
   const handleRenameSim = useCallback(
     (id, name) => {
@@ -467,11 +487,11 @@ export default function App() {
         )
       );
 
-      if (id === activeSimId) {
+      if (id === resolvedScenarioId) {
         setClientData((prev) => ensureClientShape({ ...prev, scenarioName: name }));
       }
     },
-    [activeSimId]
+    [resolvedScenarioId]
   );
 
   if (loading)
@@ -483,7 +503,6 @@ export default function App() {
 
   if (!user) return <LoginPage />;
 
-  // Se por algum motivo ainda não carregou sims do usuário, segura 1 frame
   if (!simulations.length) {
     return (
       <div className="min-h-screen grid place-items-center bg-background text-accent font-display text-xl animate-pulse">
@@ -554,16 +573,34 @@ export default function App() {
                   isStressTest={isStressTest}
                   viewMode={viewMode}
                   aiEnabled={aiEnabled}
+                  scenarioId={resolvedScenarioId}
+                  trackingByScenario={trackingByScenario}
+                  setTrackingByScenario={setTrackingByScenario}
                 />
               )}
 
-              {activeTab === "assets" && <AssetsPage clientData={clientData} updateField={updateField} readOnly={readOnly} />}
+              {activeTab === "assets" && (
+                <AssetsPage clientData={clientData} updateField={updateField} readOnly={readOnly} />
+              )}
 
-              {activeTab === "scenarios" && <ScenariosPage clientData={clientData} updateField={updateField} readOnly={readOnly} />}
+              {activeTab === "scenarios" && (
+                <ScenariosPage
+                  clientData={clientData}
+                  updateField={updateField}
+                  readOnly={readOnly}
+                  scenarioId={resolvedScenarioId}
+                  trackingByScenario={trackingByScenario}
+                  setTrackingByScenario={setTrackingByScenario}
+                />
+              )}
 
-              {activeTab === "goals" && <GoalsPage clientData={clientData} updateField={updateField} readOnly={readOnly} />}
+              {activeTab === "goals" && (
+                <GoalsPage clientData={clientData} updateField={updateField} readOnly={readOnly} />
+              )}
 
-              {activeTab === "succession" && <SuccessionPage clientData={clientData} kpis={analysis?.kpis} />}
+              {activeTab === "succession" && (
+                <SuccessionPage clientData={clientData} kpis={analysis?.kpis} />
+              )}
 
               {activeTab === "settings" && (
                 <SettingsPage
@@ -579,7 +616,7 @@ export default function App() {
             {showSidebarSimulations && (
               <SimulationsSidebar
                 simulations={simulations}
-                activeSimId={activeSimId || activeSimulation?.id}
+                activeSimId={resolvedScenarioId}
                 onSelect={handleSelectSim}
                 onCreate={handleCreateSim}
                 onDelete={handleDeleteSim}
