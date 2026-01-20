@@ -1,3 +1,4 @@
+// src/hooks/useSmartCopilot.js
 import { useCallback, useMemo, useState } from "react";
 
 const STORAGE_API_KEY = "planner_openai_api_key_v1";
@@ -65,16 +66,25 @@ export default function useSmartCopilot({ aiEnabled }) {
 
       setLoading(true);
       try {
-        // 1) Tenta /api/copilot (recomendado)
+        // ✅ 1) Tenta /api/copilot (backend)
         const res = await fetch("/api/copilot", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
+          // ✅ manda context (o backend está exigindo isso)
+          body: JSON.stringify({
+            context: prompt,
+            prompt, // mantém também por compatibilidade
+            meta: {
+              scenarioName: clientData?.scenarioName || "",
+              clientName: clientData?.name || "",
+              isStressTest: !!isStressTest,
+            },
+          }),
         });
 
         if (res.ok) {
           const data = await res.json();
-          const text = data?.text || data?.output || "";
+          const text = data?.text || data?.output || data?.result || "";
           if (!text) throw new Error("Resposta vazia do /api/copilot.");
           setResult(text);
           return;
@@ -83,15 +93,13 @@ export default function useSmartCopilot({ aiEnabled }) {
         // Se não existe endpoint, tenta alternativa frontend-only (se tiver apiKey)
         if (res.status === 404 || res.status === 405) {
           if (!apiKey) {
-            // 3) fallback mock (não trava)
             setResult(
               "Diagnóstico (mock):\n\n• Plano com base no patrimônio financeiro (liquidez) e metas informadas.\n• Sugestão: revisar custo de aposentadoria, aumentar aporte ou ajustar idade.\n• Próximo passo: conferir se os ativos ilíquidos (imóveis/empresa) não estão sendo usados para bancar a renda.\n\n(Configure um /api/copilot para diagnóstico real, ou salve uma API key no localStorage: planner_openai_api_key_v1.)"
             );
             return;
           }
 
-          // 2) Frontend-only: chama OpenAI diretamente (menos seguro)
-          // ⚠️ Expor API key no browser não é recomendado. Ideal é usar /api/copilot.
+          // ⚠️ frontend-only (menos seguro): chama OpenAI direto
           const oai = await fetch("https://api.openai.com/v1/responses", {
             method: "POST",
             headers: {
@@ -112,7 +120,6 @@ export default function useSmartCopilot({ aiEnabled }) {
 
           const json = await oai.json();
 
-          // tenta extrair texto do Responses API de forma resiliente
           const text =
             json?.output_text ||
             json?.output?.[0]?.content?.[0]?.text ||
@@ -125,7 +132,6 @@ export default function useSmartCopilot({ aiEnabled }) {
           return;
         }
 
-        // Outras falhas do endpoint
         const msg = await res.text();
         throw new Error(`Erro /api/copilot (${res.status}): ${msg?.slice?.(0, 200) || "sem detalhes"}`);
       } catch (e) {

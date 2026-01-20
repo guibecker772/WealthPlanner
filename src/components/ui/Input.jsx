@@ -2,23 +2,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { formatCurrencyBR, safeNumber } from "../../utils/format";
 
-// --- helpers ---
 function parseBRNumber(raw) {
   if (raw == null) return 0;
   const s = String(raw).trim();
   if (!s) return 0;
 
-  // permite negativo
   const neg = s.includes("-");
-
-  // mantém apenas dígitos, vírgula e ponto
   const cleaned = s.replace(/[^\d.,-]/g, "");
-
-  // padrão BR: "." milhar, "," decimal
-  // remove pontos (milhar) e troca vírgula por ponto
   const normalized = cleaned.replace(/\./g, "").replace(/,/g, ".");
-
   const n = Number(normalized);
+
   if (!Number.isFinite(n)) return 0;
   return neg ? -Math.abs(n) : n;
 }
@@ -45,8 +38,8 @@ const Input = React.forwardRef(
     const isCurrency = type === "currency";
     const isNumber = type === "number";
 
-    // Para currency, controlamos uma string de exibição
     const [display, setDisplay] = useState("");
+    const [isFocused, setIsFocused] = useState(false);
 
     // value numérico “confiável”
     const numericValue = useMemo(() => {
@@ -54,31 +47,33 @@ const Input = React.forwardRef(
       return null;
     }, [value, isCurrency, isNumber]);
 
+    // ✅ IMPORTANTE:
+    // Só sincroniza display com value formatado quando NÃO está focado.
     useEffect(() => {
       if (!isCurrency) return;
-      // se value vier vazio, mostra vazio
+
+      if (isFocused) return; // <- evita reformatar no meio da digitação
+
       if (value === "" || value == null) {
         setDisplay("");
         return;
       }
       setDisplay(formatCurrencyBR(safeNumber(value, 0)));
-    }, [value, isCurrency]);
+    }, [value, isCurrency, isFocused]);
 
     const handleChange = (e) => {
       if (!onChange) return;
 
       if (isCurrency) {
         const raw = e.target.value;
-        setDisplay(raw);
-
+        setDisplay(raw); // enquanto digita, mantém exatamente o que ele digitou
         const n = parseBRNumber(raw);
-        onChange(n);
+        onChange(n); // salva número no estado
         return;
       }
 
       if (isNumber) {
         const raw = e.target.value;
-        // aceita vazio durante digitação
         if (raw === "" || raw == null) {
           onChange("");
           return;
@@ -88,17 +83,29 @@ const Input = React.forwardRef(
         return;
       }
 
-      // text e outros: mantém padrão event
       onChange(e);
     };
 
     const handleBlur = (e) => {
       if (isCurrency) {
         const n = parseBRNumber(display);
-        // ao sair, formata bonitinho
-        setDisplay(display ? formatCurrencyBR(n) : "");
+        setDisplay(display ? formatCurrencyBR(n) : ""); // ✅ só formata ao sair
       }
+      setIsFocused(false);
       onBlur?.(e);
+    };
+
+    const handleFocus = (e) => {
+      setIsFocused(true);
+
+      // ✅ opcional (recomendado): seleciona tudo ao clicar no campo
+      if (isCurrency) {
+        requestAnimationFrame(() => {
+          try { e.target.select(); } catch {}
+        });
+      }
+
+      onFocus?.(e);
     };
 
     const inputType = isCurrency ? "text" : type;
@@ -133,7 +140,7 @@ const Input = React.forwardRef(
             `}
             onChange={handleChange}
             onBlur={handleBlur}
-            onFocus={onFocus}
+            onFocus={handleFocus}
             {...props}
           />
         </div>

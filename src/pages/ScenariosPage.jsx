@@ -3,8 +3,18 @@ import React from "react";
 import { GitBranch, Info } from "lucide-react";
 import ContributionTimelineCard from "../components/scenarios/ContributionTimelineCard";
 import CashInEventsCard from "../components/scenarios/CashInEventsCard";
+import TrackingCard from "../components/scenarios/TrackingCard";
 
-export default function ScenariosPage({ clientData, updateField, readOnly }) {
+export default function ScenariosPage({
+  clientData,
+  updateField,
+  readOnly,
+
+  // ✅ B1 (novos)
+  scenarioId,
+  trackingByScenario,
+  setTrackingByScenario,
+}) {
   return (
     <div className="space-y-6 animate-fade-in font-sans">
       <div className="flex items-center justify-between">
@@ -14,7 +24,7 @@ export default function ScenariosPage({ clientData, updateField, readOnly }) {
             Construção de Cenários
           </h2>
           <p className="text-sm text-text-secondary mt-1">
-            Modele eventos futuros como heranças ou mudanças de aporte para ver o impacto real na aposentadoria.
+            Modele eventos futuros (aportes temporários, heranças, resgates) e acompanhe mês a mês o que aconteceu na prática.
           </p>
         </div>
       </div>
@@ -22,14 +32,25 @@ export default function ScenariosPage({ clientData, updateField, readOnly }) {
       <div className="bg-accent-subtle/50 border border-accent/20 p-4 rounded-xl flex gap-3 items-start text-sm text-text-secondary">
         <Info size={20} className="text-accent shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <b>Nota:</b> As alterações feitas aqui afetam diretamente a projeção do gráfico "Evolução Patrimonial" no Dashboard.
+          <b>Nota:</b> As alterações de “Simulação” impactam o gráfico e KPIs do Dashboard.
+          O “Acompanhamento” permite comparar <b>Plano vs Real</b> por cenário.
         </p>
       </div>
 
+      {/* SIMULAÇÃO */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <ContributionTimelineCard clientData={clientData} updateField={updateField} readOnly={readOnly} />
         <CashInEventsCard clientData={clientData} updateField={updateField} readOnly={readOnly} />
       </div>
+
+      {/* ACOMPANHAMENTO */}
+      <TrackingCard
+        scenarioId={scenarioId}
+        clientData={clientData}
+        trackingByScenario={trackingByScenario}
+        setTrackingByScenario={setTrackingByScenario}
+        readOnly={readOnly}
+      />
     </div>
   );
 }
