@@ -7,6 +7,7 @@
 // - Sucessão usa TOTAL (financeiro + bens), separando corretamente
 // - ✅ Sucessão: Honorários (%) e Custas (%) (remove custas fixas por padrão)
 // - ✅ PERFIL: retorno nominal passa a respeitar clientData.profile (8/10/12)
+// - ✅ SÉRIE: inclui ponto inicial no "AGORA" (idade atual) e depois evolui ano a ano
 
 import { CONFIG } from "../constants/config";
 
@@ -171,7 +172,6 @@ function getMonthlyContributionAtAge(age, baseContribution, timeline = []) {
   if (activeRules.length === 0) return baseContribution;
 
   activeRules.sort((a, b) => toNumber(b?.startAge, 0) - toNumber(a?.startAge, 0));
-
   return toNumber(activeRules[0]?.monthlyValue, baseContribution);
 }
 
@@ -190,13 +190,11 @@ const DEFAULT_ITCMD_BY_STATE = {
   DF: 0.06,
 };
 
-// ✅ Defaults pedidos
 const DEFAULT_LEGAL_PCT = 0.05; // 5%
-const DEFAULT_FEES_PCT = 0.02;  // 2%
+const DEFAULT_FEES_PCT = 0.02; // 2%
 
 function getSuccessionConfigFromCosts(costs = {}, state) {
-  const itcmdFromConfig =
-    (CONFIG?.ITCMD_RATES && state && CONFIG.ITCMD_RATES[state]) || null;
+  const itcmdFromConfig = (CONFIG?.ITCMD_RATES && state && CONFIG.ITCMD_RATES[state]) || null;
 
   const itcmdRate = normalizeRate(
     costs?.itcmdRate ?? costs?.itcmd ?? itcmdFromConfig,
@@ -220,13 +218,9 @@ function getSuccessionConfigFromCosts(costs = {}, state) {
     DEFAULT_FEES_PCT
   );
 
-  // ✅ Mantém compat com "fixo", mas por padrão fica 0
   const feesFixed = Math.max(
     0,
-    toNumber(
-      costs?.feesFixed ?? costs?.custasFixas ?? CONFIG?.SUCCESSION_FEES_FIXED,
-      0
-    )
+    toNumber(costs?.feesFixed ?? costs?.custasFixas ?? CONFIG?.SUCCESSION_FEES_FIXED, 0)
   );
 
   return {
@@ -247,11 +241,6 @@ function getSuccessionConfigFromClientData(clientData, state) {
   return getSuccessionConfigFromCosts(cfg, state);
 }
 
-/**
- * ✅ Agora suporta:
- * - calculateSuccession(clientData)
- * - calculateSuccession(assetsArray, state, successionCosts)
- */
 function calculateSuccessionInternal(clientDataOrAssets, maybeState, maybeSuccessionCosts) {
   const isAssetsArray = Array.isArray(clientDataOrAssets);
 
@@ -262,14 +251,12 @@ function calculateSuccessionInternal(clientDataOrAssets, maybeState, maybeSucces
   if (isAssetsArray) {
     assets = clientDataOrAssets || [];
 
-    // Se alguém chamar calculateSuccession(assets, clientDataLikeObj)
     if (maybeState && typeof maybeState === "object") {
       const obj = maybeState || {};
       state = obj?.state || obj?.successionState || "SP";
-      configSource = obj; // pode conter successionCosts
+      configSource = obj;
     } else {
-      state = (maybeState || "SP");
-      // Se o chamador mandar successionCosts separadamente, criamos um "clientData" mínimo.
+      state = maybeState || "SP";
       configSource = maybeSuccessionCosts ? { successionCosts: maybeSuccessionCosts } : null;
     }
   } else {
@@ -281,9 +268,9 @@ function calculateSuccessionInternal(clientDataOrAssets, maybeState, maybeSucces
 
   const { financialTotal, illiquidTotal, total } = splitAssets(assets);
 
-  const { itcmdRate, legalPct, feesPct, feesFixed } =
-    configSource ? getSuccessionConfigFromClientData(configSource, state)
-                 : getSuccessionConfigFromCosts({}, state);
+  const { itcmdRate, legalPct, feesPct, feesFixed } = configSource
+    ? getSuccessionConfigFromClientData(configSource, state)
+    : getSuccessionConfigFromCosts({}, state);
 
   const itcmd = total * itcmdRate;
   const legal = total * legalPct;
@@ -308,18 +295,12 @@ function run(clientData = {}, isStressActiveExternal = false) {
   const currentAge = toNumber(clientData.currentAge ?? clientData.idadeAtual, 30);
 
   const retirementAge = toNumber(
-    clientData.retirementAge ??
-      clientData.endContributionsAge ??
-      clientData.idadeAposentadoria ??
-      60,
+    clientData.retirementAge ?? clientData.endContributionsAge ?? clientData.idadeAposentadoria ?? 60,
     60
   );
 
   const contributionEndAge = toNumber(
-    clientData.contributionEndAge ??
-      clientData.endContributionsAge ??
-      clientData.fimAportes ??
-      retirementAge,
+    clientData.contributionEndAge ?? clientData.endContributionsAge ?? clientData.fimAportes ?? retirementAge,
     retirementAge
   );
 
@@ -329,11 +310,7 @@ function run(clientData = {}, isStressActiveExternal = false) {
   );
 
   const baseMonthlyContribution = toNumber(
-    clientData.monthlyContribution ??
-      clientData.monthlyAporte ??
-      clientData.aporteMensal ??
-      clientData.aporte ??
-      0,
+    clientData.monthlyContribution ?? clientData.monthlyAporte ?? clientData.aporteMensal ?? clientData.aporte ?? 0,
     0
   );
 
@@ -349,8 +326,6 @@ function run(clientData = {}, isStressActiveExternal = false) {
     0
   );
 
-  // ✅ PERFIL: se o usuário não setou explicitamente nominalReturn/assumptions.nominalReturn,
-  // usamos a taxa do perfil (8/10/12).
   const nominalReturn = normalizeRate(
     clientData.assumptions?.nominalReturn ??
       clientData.nominalReturn ??
@@ -362,15 +337,11 @@ function run(clientData = {}, isStressActiveExternal = false) {
   );
 
   const inflation = normalizeRate(
-    clientData.assumptions?.inflation ??
-      clientData.inflation ??
-      CONFIG?.DEFAULT_INFLATION ??
-      0.04,
+    clientData.assumptions?.inflation ?? clientData.inflation ?? CONFIG?.DEFAULT_INFLATION ?? 0.04,
     0.04
   );
 
-  const isStress =
-    isStressActiveExternal || !!clientData.isStressTest || !!clientData.__stressTest;
+  const isStress = isStressActiveExternal || !!clientData.isStressTest || !!clientData.__stressTest;
 
   const stressInflAdd = normalizeRate(CONFIG?.STRESS_INFLATION_ADD, 0);
   const stressRetSub = normalizeRate(CONFIG?.STRESS_RETURN_SUB, 0);
@@ -379,21 +350,14 @@ function run(clientData = {}, isStressActiveExternal = false) {
   const effNominal = isStress ? nominalReturn - stressRetSub : nominalReturn;
   const effReal = (1 + effNominal) / Math.max(1e-9, 1 + effInfl) - 1;
 
-  const {
-    financialTotal: initialFinancial,
-    illiquidTotal: initialIlliquid,
-    total: totalNow,
-  } = splitAssets(clientData.assets || []);
+  const { financialTotal: initialFinancial, illiquidTotal: initialIlliquid, total: totalNow } = splitAssets(
+    clientData.assets || []
+  );
 
-  const goalsRaw = Array.isArray(clientData.financialGoals)
-    ? clientData.financialGoals
-    : [];
+  const goalsRaw = Array.isArray(clientData.financialGoals) ? clientData.financialGoals : [];
 
   const impactGoals = goalsRaw
-    .filter(
-      (g) =>
-        (g?.type || "impact") === "impact" || normalizeText(g?.type).includes("impact")
-    )
+    .filter((g) => (g?.type || "impact") === "impact" || normalizeText(g?.type).includes("impact"))
     .map((g) => ({
       id: g.id ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`,
       age: toNumber(g.age ?? g.naIdade ?? g.idade, 0),
@@ -402,9 +366,7 @@ function run(clientData = {}, isStressActiveExternal = false) {
     }))
     .filter((g) => g.age > 0 && g.value > 0);
 
-  const cashInEventsRaw = Array.isArray(clientData.cashInEvents)
-    ? clientData.cashInEvents
-    : [];
+  const cashInEventsRaw = Array.isArray(clientData.cashInEvents) ? clientData.cashInEvents : [];
 
   const cashInEvents = cashInEventsRaw
     .filter((e) => e?.enabled !== false)
@@ -420,78 +382,78 @@ function run(clientData = {}, isStressActiveExternal = false) {
     (Array.isArray(clientData.contributionRanges) && clientData.contributionRanges) ||
     [];
 
-  const contributionTimeline = rawTimeline
-    .map(normalizeTimelineRule)
-    .filter((r) => r.enabled !== false);
+  const contributionTimeline = rawTimeline.map(normalizeTimelineRule).filter((r) => r.enabled !== false);
 
-  let wealth = initialFinancial;
-  const series = [];
-
+  // ✅ NOVO MODELO DE SÉRIE:
+  // point(age) = patrimônio no "aniversário" daquela idade (estado naquele instante).
+  // Evoluímos do age -> age+1 aplicando retorno/aportes do ano e eventos do "age+1".
   const startAge = clamp(currentAge, 0, 120);
   const endAge = clamp(maxAge, startAge, 120);
 
   const cashInByAge = new Map();
-  for (const ev of cashInEvents) {
-    cashInByAge.set(ev.age, (cashInByAge.get(ev.age) || 0) + ev.value);
-  }
+  for (const ev of cashInEvents) cashInByAge.set(ev.age, (cashInByAge.get(ev.age) || 0) + ev.value);
 
   const goalsByAge = new Map();
-  for (const g of impactGoals) {
-    goalsByAge.set(g.age, (goalsByAge.get(g.age) || 0) + g.value);
-  }
+  for (const g of impactGoals) goalsByAge.set(g.age, (goalsByAge.get(g.age) || 0) + g.value);
 
-  for (let age = startAge; age <= endAge; age++) {
+  let wealth = initialFinancial;
+  const series = [];
+
+  // ponto inicial (AGORA)
+  series.push({
+    age: startAge,
+    wealth,
+    financial: wealth,
+    totalWealth: wealth + initialIlliquid,
+  });
+
+  for (let age = startAge; age < endAge; age++) {
+    // retorno durante o ano [age, age+1)
     wealth = wealth * (1 + effReal);
 
+    // aportes durante o ano [age, age+1)
     const baseForThisAge = age < contributionEndAge ? baseMonthlyContribution : 0;
     const monthly = getMonthlyContributionAtAge(age, baseForThisAge, contributionTimeline);
     const yearlyContribution = toNumber(monthly, 0) * 12;
 
-    if (yearlyContribution >= 0) {
-      wealth += yearlyContribution;
-    } else {
-      wealth = Math.max(0, wealth + yearlyContribution);
-    }
+    if (yearlyContribution >= 0) wealth += yearlyContribution;
+    else wealth = Math.max(0, wealth + yearlyContribution);
 
-    const cashIn = cashInByAge.get(age) || 0;
-    if (cashIn > 0) wealth += cashIn;
-
-    const goalsAtAge = goalsByAge.get(age) || 0;
-    if (goalsAtAge > 0) wealth = Math.max(0, wealth - goalsAtAge);
-
+    // retirada de renda durante o ano [age, age+1) se já está aposentado
     if (age >= retirementAge && desiredMonthlyIncome > 0) {
       wealth = Math.max(0, wealth - desiredMonthlyIncome * 12);
     }
 
+    // eventos no "aniversário" de age+1
+    const nextAge = age + 1;
+
+    const cashIn = cashInByAge.get(nextAge) || 0;
+    if (cashIn > 0) wealth += cashIn;
+
+    const goalsAtAge = goalsByAge.get(nextAge) || 0;
+    if (goalsAtAge > 0) wealth = Math.max(0, wealth - goalsAtAge);
+
     series.push({
-      age,
+      age: nextAge,
       wealth,
       financial: wealth,
       totalWealth: wealth + initialIlliquid,
     });
   }
 
-  const atRet =
-    series.find((p) => p.age === retirementAge) || series[series.length - 1] || { wealth: 0 };
-
+  // capital na aposentadoria = ponto no "aniversário" do retirementAge
+  const atRet = series.find((p) => p.age === retirementAge) || series[series.length - 1] || { wealth: 0 };
   const capitalAposentadoria = toNumber(atRet.wealth, 0);
 
   const sustainableIncomeMensal = effReal > 0 ? (capitalAposentadoria * effReal) / 12 : 0;
-  const capitalNecessario =
-    effReal > 0 && desiredMonthlyIncome > 0 ? (desiredMonthlyIncome * 12) / effReal : 0;
-
-  const coberturaMetaPct =
-    capitalNecessario > 0 ? (capitalAposentadoria / capitalNecessario) * 100 : 0;
+  const capitalNecessario = effReal > 0 && desiredMonthlyIncome > 0 ? (desiredMonthlyIncome * 12) / effReal : 0;
+  const coberturaMetaPct = capitalNecessario > 0 ? (capitalAposentadoria / capitalNecessario) * 100 : 0;
 
   const liquidityPct = totalNow > 0 ? (initialFinancial / totalNow) * 100 : 0;
 
   const scoreCoverage = clamp(coberturaMetaPct / 100, 0, 2);
   const scoreLiquidity = clamp(liquidityPct / 100, 0, 1);
-  const score = clamp(
-    Math.round(scoreCoverage * 45 + scoreLiquidity * 35 + (effReal > 0 ? 20 : 0)),
-    0,
-    100
-  );
+  const score = clamp(Math.round(scoreCoverage * 45 + scoreLiquidity * 35 + (effReal > 0 ? 20 : 0)), 0, 100);
 
   const kpis = {
     coberturaMetaPct,
@@ -517,6 +479,8 @@ function run(clientData = {}, isStressActiveExternal = false) {
       retirementAge,
       contributionEndAge,
       isStress,
+      startAge,
+      endAge,
     },
   };
 

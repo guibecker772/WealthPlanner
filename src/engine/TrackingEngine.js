@@ -1,24 +1,6 @@
 // src/engine/TrackingEngine.js
 import FinancialEngine from "./FinancialEngine";
 
-/**
- * trackingByScenario = {
- *   [scenarioId]: {
- *     startDate: "2026-01-15",
- *     monthly: [
- *       {
- *         year: 2026,
- *         month: 1,
- *         aportePlanejado: 10000,
- *         aporteReal: 15000,
- *         rentabilidadeRealPct: 1.5, // %
- *         inflacaoPct: 0.42 // %
- *       }
- *     ]
- *   }
- * }
- */
-
 function pctToRate(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return 0;
@@ -35,7 +17,7 @@ function compoundFromMonthlyPct(items, keyPct) {
     const r = pctToRate(m?.[keyPct] || 0);
     acc *= 1 + r;
   });
-  return acc; // fator (ex: 1.10)
+  return acc;
 }
 
 function yearsAvailable(monthly) {
@@ -49,20 +31,16 @@ function yearsAvailable(monthly) {
 
 export default class TrackingEngine {
   /**
-   * Calcula acompanhamento + reprojeção
-   * - delta patrimônio/renda/cobertura: acumulado TOTAL desde o início do tracking
-   * - yearSummary (opcional): métricas SOMENTE do ano selecionado
+   * Tracking:
+   * - patrimônioRealHoje: calcula usando aportes reais + rentabilidades reais
+   * - patrimônioPlanejadoHoje: usa aportes planejados no mesmo período
+   * - gera 2 engines ancorados no "AGORA":
+   *    - planejado (plano original ancorado no planejadoHoje)
+   *    - ajustado (plano atualizado ancorado no realHoje)
    */
-  static run({
-    scenarioId,
-    clientData,
-    trackingByScenario,
-    isStressTest = false,
-    selectedYear = null,
-  }) {
+  static run({ scenarioId, clientData, trackingByScenario, isStressTest = false, selectedYear = null }) {
     const tracking = trackingByScenario?.[scenarioId];
 
-    // Se não existe acompanhamento, retorna null
     if (!tracking || !Array.isArray(tracking.monthly) || tracking.monthly.length === 0) {
       return null;
     }
@@ -76,27 +54,25 @@ export default class TrackingEngine {
       return ma - mb;
     });
 
-    // Engine base (plano original)
-    const baseEngine = FinancialEngine.run(clientData, isStressTest);
+    // Engine base (plano original "do zero") só para referência/compat
+    const baseEngine = FinancialEngine.run(clientData || {}, isStressTest);
 
-    // ✅ CORRIGIDO: no FinancialEngine o KPI é "patrimonioAtualFinanceiro"
-    // (mantém fallback legado caso exista outro nome no futuro)
     const patrimonioInicial = Number(
       baseEngine?.kpis?.patrimonioAtualFinanceiro ??
         baseEngine?.kpis?.initialFinancialWealth ??
         0
     );
 
-    // ===============================
     // 1) HISTÓRICO REAL (TOTAL)
-    // ===============================
     let patrimonioReal = patrimonioInicial;
 
     monthlyAll.forEach((m) => {
       const aporteReal = Number(m?.aporteReal || 0);
       const rentab = pctToRate(m?.rentabilidadeRealPct || 0);
 
+      // contribuição no mês
       patrimonioReal += aporteReal;
+      // retorno do mês
       patrimonioReal *= 1 + rentab;
     });
 
@@ -107,125 +83,102 @@ export default class TrackingEngine {
     const inflacaoAcumuladaPct = (inflacaoFactorTotal - 1) * 100;
     const retornoRealAcumuladoPct = (retornoFactorTotal - 1) * 100;
 
-    // ===============================
     // 2) PLANEJADO (TOTAL) no período do tracking
-    // ===============================
     const aportePlanejadoTotal = sum(monthlyAll, (m) => Number(m?.aportePlanejado || 0));
     const aporteRealTotal = sum(monthlyAll, (m) => Number(m?.aporteReal || 0));
 
     const patrimonioPlanejadoHoje = patrimonioInicial + aportePlanejadoTotal;
     const deltaPatrimonio = patrimonioReal - patrimonioPlanejadoHoje;
 
-    // ===============================
-    // 3) Reancoragem do plano (para renda/cobertura)
-    // ===============================
-    // Mantemos "type: financeiro" porque o FinancialEngine normaliza várias strings
-    // e tende a tratar como bucket financeiro (não-illiquid). Se quiser, pode trocar para "financial".
-    const clientDataReanchored = {
+    // 3) Engines ancorados no "AGORA"
+    const clientDataPlannedAnchored = {
+      ...clientData,
+      assets: [
+        {
+          type: "financeiro",
+          value: patrimonioPlanejadoHoje,
+          description: "Patrimônio planejado (ancorado no acompanhamento)",
+        },
+      ],
+    };
+
+    const clientDataRealAnchored = {
       ...clientData,
       assets: [
         {
           type: "financeiro",
           value: patrimonioReal,
-          description: "Patrimônio ajustado após acompanhamento",
+          description: "Patrimônio real (ancorado no acompanhamento)",
         },
       ],
     };
 
-    const adjustedEngine = FinancialEngine.run(clientDataReanchored, isStressTest);
+    const plannedEngine = FinancialEngine.run(clientDataPlannedAnchored, isStressTest);
+    const adjustedEngine = FinancialEngine.run(clientDataRealAnchored, isStressTest);
 
-    // ===============================
-    // 4) YEAR SUMMARY (somente do ano selecionado)
-    // ===============================
+    // 4) YEAR SUMMARY (sempre retorna, mesmo se não houver lançamentos)
     const years = yearsAvailable(monthlyAll);
-    const safeYear = selectedYear && years.includes(Number(selectedYear)) ? Number(selectedYear) : null;
+    const ySel = selectedYear ? Number(selectedYear) : null;
 
-    let yearSummary = null;
+    const monthlyYear = Number.isFinite(ySel)
+      ? monthlyAll.filter((m) => Number(m?.year) === ySel)
+      : [];
 
-    if (safeYear) {
-      const monthlyYear = monthlyAll.filter((m) => Number(m?.year) === safeYear);
+    const aportePlanejadoAno = sum(monthlyYear, (m) => Number(m?.aportePlanejado || 0));
+    const aporteRealAno = sum(monthlyYear, (m) => Number(m?.aporteReal || 0));
+    const deltaAportesAno = aporteRealAno - aportePlanejadoAno;
 
-      const aportePlanejadoAno = sum(monthlyYear, (m) => Number(m?.aportePlanejado || 0));
-      const aporteRealAno = sum(monthlyYear, (m) => Number(m?.aporteReal || 0));
-      const deltaAportesAno = aporteRealAno - aportePlanejadoAno;
+    const inflacaoFactorAno = compoundFromMonthlyPct(monthlyYear, "inflacaoPct");
+    const retornoFactorAno = compoundFromMonthlyPct(monthlyYear, "rentabilidadeRealPct");
 
-      const inflacaoFactorAno = compoundFromMonthlyPct(monthlyYear, "inflacaoPct");
-      const retornoFactorAno = compoundFromMonthlyPct(monthlyYear, "rentabilidadeRealPct");
+    const yearSummary =
+      Number.isFinite(ySel)
+        ? {
+            year: ySel,
+            monthsCount: monthlyYear.length,
+            aportes: {
+              planejado: aportePlanejadoAno,
+              real: aporteRealAno,
+              delta: deltaAportesAno,
+            },
+            inflacao: { acumuladaPct: (inflacaoFactorAno - 1) * 100 },
+            retorno: { acumuladoPct: (retornoFactorAno - 1) * 100 },
+          }
+        : null;
 
-      yearSummary = {
-        year: safeYear,
-        aportes: {
-          planejado: aportePlanejadoAno,
-          real: aporteRealAno,
-          delta: deltaAportesAno,
-        },
-        inflacao: {
-          acumuladaPct: (inflacaoFactorAno - 1) * 100,
-        },
-        retorno: {
-          acumuladoPct: (retornoFactorAno - 1) * 100,
-        },
-      };
-    }
+    // 5) KPIs comparativos (no "AGORA")
+    const rendaOriginal = plannedEngine?.kpis?.rendaSustentavelMensal ?? plannedEngine?.kpis?.sustainableIncome ?? 0;
+    const rendaAtualizada = adjustedEngine?.kpis?.rendaSustentavelMensal ?? adjustedEngine?.kpis?.sustainableIncome ?? 0;
 
-    // ===============================
-    // 5) KPIs comparativos (✅ CORRIGIDO nomes do FinancialEngine)
-    // ===============================
-    const rendaOriginal =
-      baseEngine?.kpis?.rendaSustentavelMensal ??
-      baseEngine?.kpis?.sustainableIncome ??
-      0;
-
-    const rendaAtualizada =
-      adjustedEngine?.kpis?.rendaSustentavelMensal ??
-      adjustedEngine?.kpis?.sustainableIncome ??
-      0;
-
-    const coberturaOriginal =
-      baseEngine?.kpis?.coberturaMetaPct ??
-      baseEngine?.kpis?.goalPercentage ??
-      0;
-
-    const coberturaAtualizada =
-      adjustedEngine?.kpis?.coberturaMetaPct ??
-      adjustedEngine?.kpis?.goalPercentage ??
-      0;
+    const coberturaOriginal = plannedEngine?.kpis?.coberturaMetaPct ?? plannedEngine?.kpis?.goalPercentage ?? 0;
+    const coberturaAtualizada = adjustedEngine?.kpis?.coberturaMetaPct ?? adjustedEngine?.kpis?.goalPercentage ?? 0;
 
     return {
       meta: {
         yearsAvailable: years,
-        selectedYear: safeYear,
+        selectedYear: Number.isFinite(ySel) ? ySel : null,
         lastEntry: monthlyAll.length
           ? { year: monthlyAll[monthlyAll.length - 1].year, month: monthlyAll[monthlyAll.length - 1].month }
           : null,
       },
 
-      // Patrimônio (TOTAL desde início tracking)
       patrimonio: {
         planejadoHoje: patrimonioPlanejadoHoje,
         realHoje: patrimonioReal,
         delta: deltaPatrimonio,
       },
 
-      // Aportes (TOTAL)
       aportes: {
         planejadoTotal: aportePlanejadoTotal,
         realTotal: aporteRealTotal,
         delta: aporteRealTotal - aportePlanejadoTotal,
       },
 
-      // Inflação e retorno (TOTAL)
-      inflacao: {
-        acumuladaPct: inflacaoAcumuladaPct,
-      },
-      retornos: {
-        acumuladoPct: retornoRealAcumuladoPct,
-      },
+      inflacao: { acumuladaPct: inflacaoAcumuladaPct },
+      retornos: { acumuladoPct: retornoRealAcumuladoPct },
 
-      // Resumo do ano (somente ano selecionado)
       yearSummary,
 
-      // Renda/cobertura (comparando plano original x reancorado no REAL)
       renda: {
         planejadaOriginal: rendaOriginal,
         planejadaAtualizada: rendaAtualizada,
@@ -238,9 +191,11 @@ export default class TrackingEngine {
         delta: coberturaAtualizada - coberturaOriginal,
       },
 
+      // ✅ IMPORTANTE: agora temos o planejado ancorado
       engines: {
-        original: baseEngine,
-        ajustado: adjustedEngine,
+        base: baseEngine,       // só referência
+        planejado: plannedEngine, // "plano original" no AGORA
+        ajustado: adjustedEngine, // "plano atualizado" no AGORA
       },
     };
   }

@@ -31,7 +31,6 @@ import FinancialEngine from "../engine/FinancialEngine";
 import TrackingEngine from "../engine/TrackingEngine";
 import { formatCurrencyBR, formatPercent } from "../utils/format";
 
-// ✅ tracking inputs
 import MonthlyTrackingCard from "../components/tracking/MonthlyTrackingCard";
 
 // -------------------------
@@ -120,7 +119,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 // -------------------------
-// Legenda/Guia embaixo do gráfico
+// Legenda/Guia
 // -------------------------
 function ChartLegendFooter({
   showAdjusted,
@@ -140,7 +139,6 @@ function ChartLegendFooter({
 
   return (
     <div className="mt-4 space-y-3">
-      {/* séries */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-semibold text-text-secondary">
         <div className="flex items-center gap-2">
           <LineSwatch className="bg-accent" />
@@ -162,7 +160,6 @@ function ChartLegendFooter({
         )}
       </div>
 
-      {/* marcações */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-text-secondary">
         <div className="flex items-center gap-2">
           <DotSwatch className="bg-emerald-500 border border-white" />
@@ -187,7 +184,6 @@ function ChartLegendFooter({
         )}
       </div>
 
-      {/* timeline rules */}
       {timelineRules.length > 0 && (
         <div className="rounded-xl border border-border bg-background-secondary/30 p-3">
           <div className="text-xs font-extrabold text-text-primary mb-2">
@@ -220,7 +216,7 @@ function ChartLegendFooter({
 }
 
 // -------------------------
-// Normaliza regras do timeline/ranges (para exibir/plotar)
+// Timeline rules
 // -------------------------
 function readContributionRules(clientData) {
   const raw =
@@ -228,7 +224,6 @@ function readContributionRules(clientData) {
     (Array.isArray(clientData?.contributionRanges) && clientData.contributionRanges) ||
     [];
 
-  // tenta cobrir chaves comuns (sem “inventar” dados)
   const rules = raw
     .filter((r) => r && r.enabled !== false)
     .map((r, idx) => {
@@ -251,7 +246,6 @@ function readContributionRules(clientData) {
       const mv = Number.isFinite(monthlyValue) ? monthlyValue : 0;
       const monthly = isWithdrawal ? -Math.abs(mv) : mv;
 
-      // label “humano”
       const kindLabel =
         kindRaw.includes("financ") ? "Financiamento" :
         kindRaw.includes("consorc") ? "Consórcio" :
@@ -259,7 +253,6 @@ function readContributionRules(clientData) {
         kindRaw.includes("resgate") ? "Resgate" :
         "Período";
 
-      // valida mínimo
       if (!Number.isFinite(startAge) || !Number.isFinite(endAge)) return null;
       if (endAge < startAge) return null;
 
@@ -273,7 +266,6 @@ function readContributionRules(clientData) {
     })
     .filter(Boolean);
 
-  // ordena por início
   rules.sort((a, b) => a.startAge - b.startAge);
   return rules;
 }
@@ -283,6 +275,8 @@ function readContributionRules(clientData) {
 // -------------------------
 function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted }) {
   const allGoals = (clientData?.financialGoals || []).filter((g) => (g?.value || 0) > 0);
+
+  const nowAge = Number(clientData?.currentAge ?? clientData?.idadeAtual);
   const retirementAge = clientData?.retirementAge ?? clientData?.endContributionsAge ?? 60;
   const contributionEndAge = clientData?.contributionEndAge ?? clientData?.endContributionsAge ?? 60;
 
@@ -353,16 +347,13 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
   const cashInEvents = (clientData?.cashInEvents || []).filter(
     (e) => e?.enabled !== false && e?.age && Number(e.value) > 0
   );
-
   const hasCashIn = cashInEvents.length > 0;
 
-  // limites do eixo X (pra não desenhar faixa fora do gráfico)
-  const minAge = Math.min(...chartData.map((d) => Number(d.age)), 0);
-  const maxAge = Math.max(...chartData.map((d) => Number(d.age)), 0);
+  const minAge = Math.min(...chartData.map((d) => Number(d.age)));
+  const maxAge = Math.max(...chartData.map((d) => Number(d.age)));
+  const ticks = Array.from({ length: maxAge - minAge + 1 }, (_, i) => minAge + i);
 
-  const rulesInRange = timelineRules.filter(
-    (r) => r.endAge >= minAge && r.startAge <= maxAge
-  );
+  const rulesInRange = timelineRules.filter((r) => r.endAge >= minAge && r.startAge <= maxAge);
 
   return (
     <div className="w-full">
@@ -385,9 +376,15 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
 
             <XAxis
               dataKey="age"
+              type="number"
+              domain={[minAge, maxAge]}
+              ticks={ticks}                 // ✅ ano a ano
+              interval={0}                  // ✅ não pula de 25 em 25
               tick={{ fill: axisTextColor, fontSize: 12, fontFamily: "Inter" }}
               axisLine={{ stroke: gridColor }}
               tickLine={false}
+              allowDecimals={false}
+              minTickGap={6}
             />
 
             <YAxis
@@ -400,7 +397,7 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
 
             <Tooltip cursor={false} content={<CustomTooltip />} />
 
-            {/* ✅ Faixas do timeline (aportes temporários/resgates) */}
+            {/* ✅ Faixas do timeline */}
             {rulesInRange.map((r) => (
               <ReferenceArea
                 key={`rule_${r.id}`}
@@ -411,6 +408,23 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
                 strokeOpacity={0}
               />
             ))}
+
+            {/* ✅ Linha "AGORA" */}
+            {Number.isFinite(nowAge) && nowAge >= minAge && nowAge <= maxAge && (
+              <ReferenceLine
+                x={nowAge}
+                stroke="rgba(255,255,255,0.35)"
+                strokeDasharray="4 4"
+                label={{
+                  value: "Agora",
+                  position: "top",
+                  fill: "rgba(255,255,255,0.55)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: "Inter",
+                }}
+              />
+            )}
 
             <Bar
               dataKey="chartCashIn"
@@ -509,7 +523,6 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
         </ResponsiveContainer>
       </div>
 
-      {/* ✅ Legenda/guia embaixo */}
       <ChartLegendFooter
         showAdjusted={showAdjusted}
         hasCashIn={hasCashIn}
@@ -523,7 +536,7 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
 }
 
 // -------------------------
-// KPI Card local
+// KPI Card
 // -------------------------
 function StyledKPICard({ label, value, subtext, icon: Icon, isHero }) {
   return (
@@ -557,13 +570,12 @@ export default function DashboardPage({
   analysis,
   isStressTest,
   viewMode,
-  aiEnabled, // (mantido por compat, mas não usamos mais aqui)
-
+  aiEnabled,
   scenarioId = null,
   trackingByScenario = null,
   setTrackingByScenario = null,
 }) {
-  const [mode, setMode] = useState("simulation"); // "simulation" | "tracking"
+  const [mode, setMode] = useState("simulation");
   const [selectedYear, setSelectedYear] = useState(null);
 
   const engineOutput = useMemo(() => {
@@ -578,7 +590,6 @@ export default function DashboardPage({
   const baseKpis =
     analysis?.kpis && Object.keys(analysis.kpis).length ? analysis.kpis : engineOutput.kpis || {};
 
-  // Normaliza KPIs
   const kpisNormalized = useMemo(() => {
     const hasLegacy = baseKpis && ("goalPercentage" in baseKpis || "requiredCapital" in baseKpis);
     if (hasLegacy) return baseKpis;
@@ -596,9 +607,6 @@ export default function DashboardPage({
 
   const showTracking = mode === "tracking";
 
-  // -------------------------
-  // Tracking meta e anos
-  // -------------------------
   const scenarioTracking = trackingByScenario?.[scenarioId] || null;
   const startYearFromTracking = useMemo(() => {
     const s = scenarioTracking?.startDate;
@@ -622,8 +630,7 @@ export default function DashboardPage({
     if (!showTracking) return;
     if (selectedYear) return;
     setSelectedYear(yearOptions?.[0] || nowYear);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showTracking, yearOptions?.length]);
+  }, [showTracking, yearOptions, nowYear, selectedYear]);
 
   const tracking = useMemo(() => {
     if (!scenarioId || !trackingByScenario) return null;
@@ -641,8 +648,9 @@ export default function DashboardPage({
     }
   }, [scenarioId, trackingByScenario, clientData, isStressTest, selectedYear]);
 
+  // ✅ EM TRACKING: original = planejado ancorado; adjusted = real ancorado
   const seriesOriginal = showTracking
-    ? tracking?.engines?.original?.series || engineOutput?.series || []
+    ? tracking?.engines?.planejado?.series || engineOutput?.series || []
     : engineOutput?.series || [];
 
   const seriesAdjusted = showTracking
@@ -721,9 +729,7 @@ export default function DashboardPage({
             </select>
 
             <span className="text-xs text-text-secondary">
-              {tracking?.yearSummary?.year === selectedYear
-                ? ""
-                : scenarioTracking?.monthly?.some((m) => Number(m?.year) === Number(selectedYear))
+              {scenarioTracking?.monthly?.some((m) => Number(m?.year) === Number(selectedYear))
                 ? ""
                 : "(sem lançamentos neste ano)"}
             </span>
@@ -731,7 +737,6 @@ export default function DashboardPage({
         )}
       </div>
 
-      {/* ✅ agora tudo full-width (sem coluna do copilot) */}
       <div className="space-y-6">
         {/* KPIs topo + Wealth Score */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -779,7 +784,7 @@ export default function DashboardPage({
           </div>
         </div>
 
-        {/* Acompanhamento Mensal (inputs) */}
+        {/* Acompanhamento Mensal */}
         {showTracking && (
           <Card
             title="Acompanhamento Mensal"
@@ -895,6 +900,7 @@ export default function DashboardPage({
                   </div>
                 </div>
 
+                {/* ✅ Resumo do ano (voltou) */}
                 {tracking?.yearSummary?.year && (
                   <div className="md:col-span-3 rounded-2xl border border-border bg-surface/30 p-5">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
