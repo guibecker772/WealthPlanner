@@ -1,5 +1,5 @@
 // src/auth/AuthContext.jsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -10,12 +10,12 @@ import {
   updateProfile,
 } from "firebase/auth";
 
-import { auth } from "../services/firebase"; // ajuste se seu caminho for outro
+import { auth } from "../services/firebase";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null); // Firebase User
+  const [user, setUser] = useState(null); // Firebase user
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,18 +25,6 @@ export function AuthProvider({ children }) {
     });
     return () => unsub();
   }, []);
-
-  // Força re-render quando você atualiza profile (displayName, photoURL)
-  const refreshUser = async () => {
-    if (!auth.currentUser) return;
-    try {
-      await auth.currentUser.reload();
-    } catch {
-      // ignore
-    }
-    // cria nova referência para disparar render
-    setUser(auth.currentUser ? { ...auth.currentUser } : null);
-  };
 
   const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
 
@@ -49,29 +37,27 @@ export function AuthProvider({ children }) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     if (userCredential.user && name) {
       await updateProfile(userCredential.user, { displayName: name });
-      await refreshUser();
     }
     return userCredential;
   };
 
   const logout = () => signOut(auth);
 
-  // ✅ fbUser = alias do user (para manter compatibilidade com seus pages)
-  const value = useMemo(
-    () => ({
-      user,
-      fbUser: user,
-      loading,
-      login,
-      loginGoogle,
-      register,
-      logout,
-      refreshUser,
-    }),
-    [user, loading]
+  return (
+    <AuthContext.Provider
+      value={{
+        user,        // ✅ usado no AppShell
+        fbUser: user, // ✅ usado no AccountPage/SecurityPage
+        loading,
+        login,
+        loginGoogle,
+        register,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

@@ -19,5 +19,6 @@ export default function RequireAuth() {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
+  // ✅ importante para rotas aninhadas
   return <Outlet />;
 }

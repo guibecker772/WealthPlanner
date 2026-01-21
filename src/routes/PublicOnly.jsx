@@ -1,7 +1,7 @@
 // src/routes/PublicOnly.jsx
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext.jsx"; // ajuste o caminho se necessário
+import { useAuth } from "../auth/AuthContext.jsx";
 
 export default function PublicOnly({ children }) {
   const { user, loading } = useAuth();
@@ -14,7 +14,6 @@ export default function PublicOnly({ children }) {
     );
   }
 
-  // Se já estiver logado, não faz sentido acessar /login
   if (user) return <Navigate to="/dashboard/overview" replace />;
 
   return children;
