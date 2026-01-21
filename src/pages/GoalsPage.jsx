@@ -1,10 +1,22 @@
 // src/pages/GoalsPage.jsx
 import React from "react";
+import { useOutletContext } from "react-router-dom";
 import { Plus, Trash2, Flag, Target, Milestone } from "lucide-react";
 import { generateUUID } from "../utils/format";
 import InputField from "../components/InputField";
 
-export default function GoalsPage({ clientData, updateField, readOnly }) {
+export default function GoalsPage() {
+  const ctx = useOutletContext() || {};
+  const { clientData, updateField, readOnly } = ctx;
+
+  if (!clientData || typeof updateField !== "function") {
+    return (
+      <div className="p-6 rounded-2xl border border-border bg-surface/40 text-text-secondary">
+        Dados do cenário indisponíveis no momento.
+      </div>
+    );
+  }
+
   const goals = clientData.financialGoals || [];
 
   const GOAL_TYPES = [

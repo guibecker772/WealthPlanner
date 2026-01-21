@@ -20,6 +20,7 @@ import {
 
 import FinancialEngine from "../engine/FinancialEngine";
 import { useAuth } from "../auth/AuthContext.jsx";
+import deepEqual from "../utils/deepEqual";
 
 const STORAGE_VIEW = "planner_view_mode_v1";
 const STORAGE_AI = "planner_ai_enabled_v1";
@@ -100,11 +101,43 @@ function loadSimulations(uid) {
   const simsKey = keyForUser(STORAGE_SIMS_BASE, uid);
   try {
     const raw = localStorage.getItem(simsKey);
-    if (!raw) return buildBaseSimulation();
+    if (!raw) {
+      // fallback: legacy key (sem sufixo de usuário)
+      const legacyRaw = localStorage.getItem(STORAGE_SIMS_BASE);
+      if (legacyRaw) {
+        console.log("[loadSimulations] fallback legacy key", STORAGE_SIMS_BASE);
+        const parsedLegacy = JSON.parse(legacyRaw);
+        if (Array.isArray(parsedLegacy) && parsedLegacy.length > 0) {
+          const normalized = parsedLegacy.map((s, idx) => {
+            const safe = s && typeof s === "object" ? s : {};
+            const name = typeof safe.name === "string" && safe.name.trim() ? safe.name : `Cenário ${idx + 1}`;
+            const id = safe.id || genId();
+            const updatedAt = Number.isFinite(Number(safe.updatedAt)) ? Number(safe.updatedAt) : Date.now();
+            const rawData = safe.data && typeof safe.data === "object" ? safe.data : {};
+            const data = ensureClientShape({ ...rawData, scenarioName: rawData.scenarioName ?? name });
+            return { id, name, data, updatedAt };
+          });
+          // migra para a key atual
+          localStorage.setItem(simsKey, JSON.stringify(normalized));
+          return normalized;
+        }
+      }
+      return buildBaseSimulation();
+    }
+    console.log("[loadSimulations] key", simsKey, "raw", raw.slice(0, 120));
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return buildBaseSimulation();
-    return parsed.map((s) => ({ ...s, data: ensureClientShape(s.data) }));
+    return parsed.map((s, idx) => {
+      const safe = s && typeof s === "object" ? s : {};
+      const name = typeof safe.name === "string" && safe.name.trim() ? safe.name : `Cenário ${idx + 1}`;
+      const id = safe.id || genId();
+      const updatedAt = Number.isFinite(Number(safe.updatedAt)) ? Number(safe.updatedAt) : Date.now();
+      const rawData = safe.data && typeof safe.data === "object" ? safe.data : {};
+      const data = ensureClientShape({ ...rawData, scenarioName: rawData.scenarioName ?? name });
+      return { id, name, data, updatedAt };
+    });
   } catch {
+    console.log("[loadSimulations] JSON inválido ou erro ao ler", simsKey);
     return buildBaseSimulation();
   }
 }
@@ -430,7 +463,19 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
   );
 }
 
-function Header({ title, clientName, activeScenarioName, viewMode, setViewMode, readOnly, isStressTest, setIsStressTest, user, logout }) {
+function Header({
+  title,
+  clientName,
+  activeScenarioName,
+  hasUnsavedChanges,
+  viewMode,
+  setViewMode,
+  readOnly,
+  isStressTest,
+  setIsStressTest,
+  user,
+  logout,
+}) {
   return (
     <header className="h-24 shrink-0 flex items-center justify-between px-8 lg:px-10 border-b border-border z-20 relative bg-background/80 backdrop-blur-xl transition-all">
       <div>
@@ -438,6 +483,11 @@ function Header({ title, clientName, activeScenarioName, viewMode, setViewMode, 
         <p className="text-sm text-text-secondary mt-1 font-medium flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
           {clientName || "Cliente"} • {activeScenarioName || "Cenário Base"}
+          {hasUnsavedChanges && (
+            <span className="ml-2 text-[11px] px-2 py-1 rounded-full bg-accent/15 text-accent font-bold">
+              Não salvo
+            </span>
+          )}
         </p>
       </div>
 
@@ -492,7 +542,8 @@ export default function AppShell() {
 
   const [simulations, setSimulations] = useState([]);
   const [activeSimId, setActiveSimId] = useState(null);
-  const [clientData, setClientData] = useState(ensureClientShape(DEFAULT_CLIENT));
+  const [officialClientData, setOfficialClientData] = useState(ensureClientShape(DEFAULT_CLIENT));
+  const [draftClientData, setDraftClientData] = useState(ensureClientShape(DEFAULT_CLIENT));
 
   const [trackingByScenario, setTrackingByScenario] = useState({});
 
@@ -501,8 +552,6 @@ export default function AppShell() {
   useEffect(() => localStorage.setItem(STORAGE_STRESS, String(isStressTest)), [isStressTest]);
 
   useEffect(() => {
-    if (!uid) return;
-
     const loadedSims = loadSimulations(uid);
     const storedActive = loadActiveSimId(uid);
 
@@ -513,7 +562,9 @@ export default function AppShell() {
     setActiveSimId(nextActiveId);
 
     const chosen = loadedSims.find((s) => s.id === nextActiveId) || loadedSims[0];
-    setClientData(ensureClientShape(chosen?.data || DEFAULT_CLIENT));
+    const nextData = ensureClientShape(chosen?.data || DEFAULT_CLIENT);
+    setOfficialClientData(nextData);
+    setDraftClientData(nextData);
 
     const loadedTracking = loadTrackingByScenario(uid);
     setTrackingByScenario(loadedTracking);
@@ -521,19 +572,18 @@ export default function AppShell() {
   }, [uid]);
 
   useEffect(() => {
-    if (!uid) return;
-    localStorage.setItem(simsKey, JSON.stringify(simulations));
-  }, [simulations, simsKey, uid]);
+    const payload = JSON.stringify(simulations);
+    localStorage.setItem(simsKey, payload);
+    console.log("[persist simulations] key", simsKey, "count", simulations.length, "sample", payload.slice(0, 120));
+  }, [simulations, simsKey]);
 
   useEffect(() => {
-    if (!uid) return;
     if (activeSimId) localStorage.setItem(activeKey, activeSimId);
-  }, [activeSimId, activeKey, uid]);
+  }, [activeSimId, activeKey]);
 
   useEffect(() => {
-    if (!uid) return;
     localStorage.setItem(trackingKey, JSON.stringify(trackingByScenario || {}));
-  }, [trackingByScenario, trackingKey, uid]);
+  }, [trackingByScenario, trackingKey]);
 
   useEffect(() => {
     if (!simulations.length) return;
@@ -541,12 +591,16 @@ export default function AppShell() {
     const exists = activeSimId && simulations.some((s) => s.id === activeSimId);
     const nextId = exists ? activeSimId : simulations[0].id;
 
-    if (nextId !== activeSimId) setActiveSimId(nextId);
-
-    const sim = simulations.find((s) => s.id === nextId);
-    if (sim) setClientData(ensureClientShape(sim.data));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulations]);
+    if (nextId !== activeSimId) {
+      setActiveSimId(nextId);
+      const sim = simulations.find((s) => s.id === nextId);
+      if (sim) {
+        const nextData = ensureClientShape(sim.data);
+        setOfficialClientData(nextData);
+        setDraftClientData(nextData);
+      }
+    }
+  }, [simulations, activeSimId]);
 
   const activeSimulation = useMemo(
     () => simulations.find((s) => s.id === activeSimId) || simulations[0],
@@ -555,59 +609,60 @@ export default function AppShell() {
 
   const resolvedScenarioId = activeSimId || activeSimulation?.id || null;
 
-  const updateField = useCallback(
-    (field, value) => {
-      setClientData((prev) => {
-        const next = ensureClientShape({ ...prev, [field]: value });
+  const updateField = useCallback((field, value) => {
+    setDraftClientData((prev) => ensureClientShape({ ...prev, [field]: value }));
+  }, []);
 
-        setSimulations((sims) =>
-          sims.map((s) => {
-            if (s.id !== resolvedScenarioId) return s;
-            const nextName =
-              field === "scenarioName"
-                ? String(value || "Cenário")
-                : s.name || next.scenarioName || "Cenário";
-
-            return { ...s, name: nextName, data: next, updatedAt: Date.now() };
-          })
-        );
-
-        return next;
-      });
-    },
-    [resolvedScenarioId]
+  const analysis = useMemo(
+    () => FinancialEngine.run(draftClientData, isStressTest),
+    [draftClientData, isStressTest]
   );
 
-  const analysis = useMemo(() => FinancialEngine.run(clientData, isStressTest), [clientData, isStressTest]);
+  const hasUnsavedChanges = useMemo(
+    () => !deepEqual(draftClientData, officialClientData),
+    [draftClientData, officialClientData]
+  );
 
   // mantém a sidebar de simulações escondida nas telas que não precisam dela
   const showSidebarSimulations = viewMode === "advisor" && !location.pathname.includes("/dashboard/settings")
     && !location.pathname.includes("/dashboard/account")
     && !location.pathname.includes("/dashboard/security");
 
+  const confirmDiscardDraft = useCallback(() => {
+    if (!hasUnsavedChanges) return true;
+    return window.confirm("Você tem alterações não salvas. Deseja descartá-las?");
+  }, [hasUnsavedChanges]);
+
   const handleSelectSim = useCallback(
     (id) => {
       const sim = simulations.find((s) => s.id === id);
       if (!sim) return;
+      if (id === activeSimId) return;
+      if (!confirmDiscardDraft()) return;
       setActiveSimId(id);
-      setClientData(ensureClientShape(sim.data));
+      const nextData = ensureClientShape(sim.data);
+      setOfficialClientData(nextData);
+      setDraftClientData(nextData);
     },
-    [simulations]
+    [simulations, activeSimId, confirmDiscardDraft]
   );
 
   const handleCreateSim = useCallback(() => {
+    if (!confirmDiscardDraft()) return;
     const id = genId();
     const baseName = `Cenário ${simulations.length + 1}`;
-    const clone = ensureClientShape({ ...clientData, scenarioName: baseName });
+    const clone = ensureClientShape({ ...officialClientData, scenarioName: baseName });
 
     const next = { id, name: baseName, data: clone, updatedAt: Date.now() };
     setSimulations((s) => [next, ...s]);
     setActiveSimId(id);
-    setClientData(clone);
-  }, [clientData, simulations.length]);
+    setOfficialClientData(clone);
+    setDraftClientData(clone);
+  }, [officialClientData, simulations.length, confirmDiscardDraft]);
 
   const handleDeleteSim = useCallback(() => {
     if (simulations.length <= 1) return;
+    if (!confirmDiscardDraft()) return;
 
     const idx = simulations.findIndex((s) => s.id === resolvedScenarioId);
     const nextList = simulations.filter((s) => s.id !== resolvedScenarioId);
@@ -617,29 +672,43 @@ export default function AppShell() {
     setActiveSimId(nextActive);
 
     const sim = nextList.find((s) => s.id === nextActive);
-    if (sim) setClientData(ensureClientShape(sim.data));
-  }, [resolvedScenarioId, simulations]);
+    if (sim) {
+      const nextData = ensureClientShape(sim.data);
+      setOfficialClientData(nextData);
+      setDraftClientData(nextData);
+    }
+  }, [resolvedScenarioId, simulations, confirmDiscardDraft]);
 
   const handleSaveSim = useCallback(() => {
+    const nextData = ensureClientShape(draftClientData);
+    const targetId = resolvedScenarioId || activeSimulation?.id || null;
+    console.log("[handleSaveSim] targetId", targetId, "draft", nextData);
+    if (!targetId) return;
+
     setSimulations((sims) =>
       sims.map((s) => {
-        if (s.id !== resolvedScenarioId) return s;
-        const name = s.name || clientData.scenarioName || "Cenário";
-        return { ...s, name, data: ensureClientShape(clientData), updatedAt: Date.now() };
+        if (s.id !== targetId) return s;
+        const name = nextData.scenarioName || s.name || "Cenário";
+        return { ...s, name, data: nextData, updatedAt: Date.now() };
       })
     );
-  }, [resolvedScenarioId, clientData]);
+    setOfficialClientData(nextData);
+    setDraftClientData(nextData);
+  }, [resolvedScenarioId, activeSimulation?.id, draftClientData]);
 
   const handleRenameSim = useCallback(
     (id, name) => {
       setSimulations((sims) =>
-        sims.map((s) =>
-          s.id === id ? { ...s, name, updatedAt: Date.now(), data: { ...s.data, scenarioName: name } } : s
-        )
+        sims.map((s) => {
+          if (s.id !== id) return s;
+          const nextData = ensureClientShape({ ...(s.data || {}), scenarioName: name });
+          return { ...s, name, updatedAt: Date.now(), data: nextData };
+        })
       );
 
       if (id === resolvedScenarioId) {
-        setClientData((prev) => ensureClientShape({ ...prev, scenarioName: name }));
+        setOfficialClientData((prev) => ensureClientShape({ ...prev, scenarioName: name }));
+        setDraftClientData((prev) => ensureClientShape({ ...prev, scenarioName: name }));
       }
     },
     [resolvedScenarioId]
@@ -683,7 +752,7 @@ export default function AppShell() {
   }
 
   const outletCtx = {
-    clientData,
+    clientData: draftClientData,
     updateField,
     readOnly,
     analysis,
@@ -703,8 +772,9 @@ export default function AppShell() {
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Header
           title={pageTitle}
-          clientName={clientData?.name}
+          clientName={draftClientData?.name}
           activeScenarioName={activeSimulation?.name}
+          hasUnsavedChanges={hasUnsavedChanges}
           viewMode={viewMode}
           setViewMode={setViewMode}
           readOnly={readOnly}

@@ -1,5 +1,6 @@
 // src/pages/AssetsPage.jsx
 import React, { useMemo } from "react";
+import { useOutletContext } from "react-router-dom";
 import { Plus, Wallet, Building2, Car, Briefcase, Box, Trash2 } from "lucide-react";
 
 import Card from "../components/ui/Card";
@@ -42,7 +43,18 @@ function normalizeCurrencyValue(v) {
   return Number.isFinite(n) ? n : "";
 }
 
-export default function AssetsPage({ clientData, updateField, readOnly }) {
+export default function AssetsPage() {
+  const ctx = useOutletContext() || {};
+  const { clientData, updateField, readOnly } = ctx;
+
+  if (!clientData || typeof updateField !== "function") {
+    return (
+      <div className="p-6 rounded-2xl border border-border bg-surface/40 text-text-secondary">
+        Dados do cenário indisponíveis no momento.
+      </div>
+    );
+  }
+
   const assets = clientData.assets || [];
 
   const addAsset = () => {

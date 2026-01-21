@@ -1,5 +1,6 @@
 // src/pages/SuccessionPage.jsx
 import React, { useMemo, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Scale, ArrowRight, AlertCircle, CheckCircle2, Shield } from "lucide-react";
 
@@ -37,7 +38,18 @@ function getMonthlyCostRetirement(clientData) {
   );
 }
 
-export default function SuccessionPage({ clientData, kpis }) {
+export default function SuccessionPage() {
+  const ctx = useOutletContext() || {};
+  const { clientData, analysis } = ctx;
+  const kpis = analysis?.kpis;
+
+  if (!clientData) {
+    return (
+      <div className="p-6 rounded-2xl border border-border bg-surface/40 text-text-secondary">
+        Dados do cenário indisponíveis no momento.
+      </div>
+    );
+  }
   const [activeStrategyId, setActiveStrategyId] = useState("overview");
   const [incomeInsuranceBase, setIncomeInsuranceBase] = useState("now");
 

@@ -1,5 +1,6 @@
 // src/pages/SettingsPage.jsx
 import React, { useMemo } from "react";
+import { useOutletContext } from "react-router-dom";
 import {
   ToggleLeft,
   ToggleRight,
@@ -54,14 +55,28 @@ function normalizePctInputToRate(v, fallbackRate) {
   return Math.abs(n) > 1 ? n / 100 : n;
 }
 
-export default function SettingsPage({
-  clientData,
-  kpis, // ✅ necessário para o PDF unificado
-  handleUpdate,
-  readOnly,
-  aiEnabled,
-  toggleAi,
-}) {
+export default function SettingsPage() {
+  const ctx = useOutletContext() || {};
+  const {
+    clientData,
+    analysis,
+    updateField,
+    readOnly,
+    aiEnabled,
+    setAiEnabled,
+  } = ctx;
+
+  const kpis = analysis?.kpis;
+  const handleUpdate = updateField;
+  const toggleAi = () => setAiEnabled?.((v) => !v);
+
+  if (!clientData || typeof handleUpdate !== "function") {
+    return (
+      <div className="p-6 rounded-2xl border border-border bg-surface/40 text-text-secondary">
+        Dados do cenário indisponíveis no momento.
+      </div>
+    );
+  }
   const handleNumericChange = (field, rawValue) => {
     if (rawValue === "" || rawValue === null || rawValue === undefined) {
       handleUpdate(field, "");

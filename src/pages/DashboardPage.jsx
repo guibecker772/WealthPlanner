@@ -1,5 +1,6 @@
 // src/pages/DashboardPage.jsx
 import React, { useMemo, useState, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import {
   ComposedChart,
   Area,
@@ -565,27 +566,38 @@ function StyledKPICard({ label, value, subtext, icon: Icon, isHero }) {
 // -------------------------
 // PÁGINA PRINCIPAL
 // -------------------------
-export default function DashboardPage({
-  clientData,
-  analysis,
-  isStressTest,
-  viewMode,
-  aiEnabled,
-  scenarioId = null,
-  trackingByScenario = null,
-  setTrackingByScenario = null,
-}) {
+export default function DashboardPage() {
+  const ctx = useOutletContext() || {};
+  const {
+    clientData,
+    analysis,
+    isStressTest,
+    viewMode,
+    aiEnabled,
+    scenarioId = null,
+    trackingByScenario = null,
+    setTrackingByScenario = null,
+  } = ctx;
+
+  if (!clientData) {
+    return (
+      <div className="p-6 rounded-2xl border border-border bg-surface/40 text-text-secondary">
+        Dados do cenário indisponíveis no momento.
+      </div>
+    );
+  }
   const [mode, setMode] = useState("simulation");
   const [selectedYear, setSelectedYear] = useState(null);
 
   const engineOutput = useMemo(() => {
+    if (analysis) return analysis;
     try {
       return FinancialEngine.run(clientData || {}, isStressTest);
     } catch (e) {
       console.error("FinancialEngine.run error:", e);
       return { kpis: {}, series: [], succession: null };
     }
-  }, [clientData, isStressTest]);
+  }, [analysis, clientData, isStressTest]);
 
 const baseKpis = engineOutput?.kpis || {};
 

@@ -1,20 +1,29 @@
 // src/pages/ScenariosPage.jsx
 import React from "react";
+import { useOutletContext } from "react-router-dom";
 import { GitBranch, Info } from "lucide-react";
 import ContributionTimelineCard from "../components/scenarios/ContributionTimelineCard";
 import CashInEventsCard from "../components/scenarios/CashInEventsCard";
 import TrackingCard from "../components/scenarios/TrackingCard";
 
-export default function ScenariosPage({
-  clientData,
-  updateField,
-  readOnly,
+export default function ScenariosPage() {
+  const ctx = useOutletContext() || {};
+  const {
+    clientData,
+    updateField,
+    readOnly,
+    scenarioId,
+    trackingByScenario,
+    setTrackingByScenario,
+  } = ctx;
 
-  // ✅ B1 (novos)
-  scenarioId,
-  trackingByScenario,
-  setTrackingByScenario,
-}) {
+  if (!clientData || typeof updateField !== "function") {
+    return (
+      <div className="p-6 rounded-2xl border border-border bg-surface/40 text-text-secondary">
+        Dados do cenário indisponíveis no momento.
+      </div>
+    );
+  }
   return (
     <div className="space-y-6 animate-fade-in font-sans">
       <div className="flex items-center justify-between">
