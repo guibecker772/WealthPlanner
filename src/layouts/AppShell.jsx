@@ -1,6 +1,6 @@
-// src/AppShell.jsx
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+// src/layouts/AppShell.jsx
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Wallet,
@@ -13,10 +13,13 @@ import {
   Save,
   Trash2,
   UserCircle2,
+  ChevronDown,
+  Settings as SettingsIcon,
+  Shield,
 } from "lucide-react";
 
 import FinancialEngine from "../engine/FinancialEngine";
-import { useAuth } from "../auth/AuthContext.jsx"; // ✅ ajuste se seu caminho for outro
+import { useAuth } from "../auth/AuthContext.jsx";
 
 const STORAGE_VIEW = "planner_view_mode_v1";
 const STORAGE_AI = "planner_ai_enabled_v1";
@@ -45,7 +48,7 @@ const DEFAULT_CLIENT = {
   profile: "Conservador",
 
   currentAge: "",
-  birthMonth: 1, // ✅ mês (1..12)
+  birthMonth: 1,
   contributionEndAge: "",
   retirementAge: "",
   lifeExpectancy: "",
@@ -120,6 +123,117 @@ function loadTrackingByScenario(uid) {
   } catch {
     return {};
   }
+}
+
+function useClickOutside(ref, handler) {
+  useEffect(() => {
+    const onDown = (e) => {
+      if (!ref.current) return;
+      if (ref.current.contains(e.target)) return;
+      handler?.();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [ref, handler]);
+}
+
+function UserMenu({ user, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+  const navigate = useNavigate();
+
+  useClickOutside(menuRef, () => setOpen(false));
+
+  const displayName =
+    user?.displayName?.trim() ||
+    user?.email?.split("@")?.[0] ||
+    "Usuário";
+
+  const email = user?.email || "";
+
+  const go = (path) => {
+    setOpen(false);
+    navigate(path);
+  };
+
+  const initials = useMemo(() => {
+    const parts = String(displayName).trim().split(/\s+/).filter(Boolean);
+    const a = parts[0]?.[0] || "U";
+    const b = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
+    return (a + b).toUpperCase();
+  }, [displayName]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border bg-surface/30 hover:bg-surface-highlight transition-all"
+        title="Conta"
+      >
+        <div className="w-9 h-9 rounded-xl bg-accent/15 text-accent font-black grid place-items-center">
+          {initials}
+        </div>
+
+        <div className="hidden md:block text-left">
+          <div className="text-sm font-semibold text-text-primary leading-tight">
+            {displayName}
+          </div>
+          <div className="text-xs text-text-secondary leading-tight">
+            {email}
+          </div>
+        </div>
+
+        <ChevronDown
+          size={16}
+          className={`text-text-secondary transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-3 w-[280px] rounded-2xl border border-border bg-background-secondary/95 backdrop-blur-xl shadow-xl overflow-hidden z-50">
+          <div className="p-4 border-b border-border">
+            <div className="text-sm font-bold text-text-primary">{displayName}</div>
+            <div className="text-xs text-text-secondary mt-0.5">{email}</div>
+          </div>
+
+          <div className="p-2">
+            <button
+              onClick={() => go("/dashboard/account")}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-secondary hover:text-text-primary hover:bg-surface-highlight transition-all"
+            >
+              <SettingsIcon size={16} />
+              Minha Conta
+            </button>
+
+            <button
+              onClick={() => go("/dashboard/security")}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-secondary hover:text-text-primary hover:bg-surface-highlight transition-all"
+            >
+              <Shield size={16} />
+              Segurança
+            </button>
+
+            <div className="my-2 border-t border-border" />
+
+            <button
+              onClick={() => {
+                setOpen(false);
+                onLogout?.();
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-danger hover:bg-danger-subtle/20 transition-all"
+            >
+              <LogOut size={16} />
+              Sair
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MainSidebar({ viewMode, logout }) {
@@ -214,16 +328,7 @@ function MainSidebar({ viewMode, logout }) {
   );
 }
 
-function SimulationsSidebar({
-  simulations,
-  activeSimId,
-  onSelect,
-  onCreate,
-  onDelete,
-  onSave,
-  onRename,
-  readOnly,
-}) {
+function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDelete, onSave, onRename, readOnly }) {
   return (
     <div className="w-80 shrink-0 bg-background-secondary/80 border-l border-border backdrop-blur-md p-6">
       <div className="flex items-center justify-between mb-4">
@@ -325,16 +430,7 @@ function SimulationsSidebar({
   );
 }
 
-function Header({
-  title,
-  clientName,
-  activeScenarioName,
-  viewMode,
-  setViewMode,
-  readOnly,
-  isStressTest,
-  setIsStressTest,
-}) {
+function Header({ title, clientName, activeScenarioName, viewMode, setViewMode, readOnly, isStressTest, setIsStressTest, user, logout }) {
   return (
     <header className="h-24 shrink-0 flex items-center justify-between px-8 lg:px-10 border-b border-border z-20 relative bg-background/80 backdrop-blur-xl transition-all">
       <div>
@@ -371,6 +467,9 @@ function Header({
           <Flag size={18} className={isStressTest ? "fill-current" : ""} />
           {isStressTest ? "Stress Ativo" : "Simular Stress"}
         </button>
+
+        {/* ✅ Menu do usuário (nome clicável) */}
+        <UserMenu user={user} onLogout={logout} />
       </div>
     </header>
   );
@@ -380,8 +479,6 @@ export default function AppShell() {
   const { user, loading, logout } = useAuth();
   const location = useLocation();
 
-  // RequireAuth deve impedir acesso sem user,
-  // mas aqui mantemos um fallback de loading por segurança.
   const uid = user?.uid || null;
 
   const simsKey = keyForUser(STORAGE_SIMS_BASE, uid);
@@ -483,7 +580,10 @@ export default function AppShell() {
 
   const analysis = useMemo(() => FinancialEngine.run(clientData, isStressTest), [clientData, isStressTest]);
 
-  const showSidebarSimulations = viewMode === "advisor" && !location.pathname.includes("/dashboard/settings");
+  // mantém a sidebar de simulações escondida nas telas que não precisam dela
+  const showSidebarSimulations = viewMode === "advisor" && !location.pathname.includes("/dashboard/settings")
+    && !location.pathname.includes("/dashboard/account")
+    && !location.pathname.includes("/dashboard/security");
 
   const handleSelectSim = useCallback(
     (id) => {
@@ -553,6 +653,8 @@ export default function AppShell() {
     if (p.includes("/dashboard/goals")) return "Metas & Objetivos";
     if (p.includes("/dashboard/succession")) return "Planejamento Sucessório";
     if (p.includes("/dashboard/settings")) return "Dados do Cliente";
+    if (p.includes("/dashboard/account")) return "Minha Conta";
+    if (p.includes("/dashboard/security")) return "Segurança";
     return "Dashboard";
   }, [location.pathname]);
 
@@ -563,7 +665,7 @@ export default function AppShell() {
       </div>
     );
 
-  // Fallback defensivo (RequireAuth deve bloquear antes)
+  // fallback defensivo
   if (!user) {
     return (
       <div className="min-h-screen grid place-items-center bg-background text-text-secondary font-sans">
@@ -580,7 +682,6 @@ export default function AppShell() {
     );
   }
 
-  // Dados compartilhados para as páginas via Outlet context
   const outletCtx = {
     clientData,
     updateField,
@@ -609,6 +710,8 @@ export default function AppShell() {
           readOnly={readOnly}
           isStressTest={isStressTest}
           setIsStressTest={setIsStressTest}
+          user={user}
+          logout={logout}
         />
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden relative p-1">

@@ -1,23 +1,7 @@
 // src/pages/LoginPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signInWithPopup,
-} from "firebase/auth";
-import { auth, googleProvider } from "../services/firebase";
-
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  Loader2,
-  CheckCircle2,
-} from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, AlertTriangle, Loader2, CheckCircle2, User } from "lucide-react";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 function GoogleMark({ className = "" }) {
   return (
@@ -53,17 +37,15 @@ function friendlyAuthError(err) {
   if (code.includes("auth/popup-closed-by-user")) return "Login com Google cancelado.";
   if (code.includes("auth/operation-not-allowed"))
     return "Método de login não habilitado no Firebase (verifique Authentication).";
+  if (code.includes("auth/too-many-requests")) return "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
   return err?.message || "Erro ao autenticar. Tente novamente.";
 }
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Se veio de uma rota protegida, voltamos pra ela após login
-  const from = location.state?.from?.pathname || "/dashboard/overview";
+  const { login, loginGoogle, register, resetPassword } = useAuth();
 
   const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -84,13 +66,11 @@ export default function LoginPage() {
   }, [remember, email]);
 
   const canSubmit = useMemo(() => {
-    return String(email || "").trim().length > 0 && String(password || "").length > 0;
-  }, [email, password]);
-
-  const goAfterAuth = () => {
-    // replace evita voltar pro /login ao apertar "voltar"
-    navigate(from, { replace: true });
-  };
+    const okEmail = String(email || "").trim().length > 0;
+    const okPass = String(password || "").length > 0;
+    if (mode === "signup") return okEmail && okPass && String(name || "").trim().length >= 2;
+    return okEmail && okPass;
+  }, [email, password, name, mode]);
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -98,15 +78,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        await createUserWithEmailAndPassword(auth, email.trim(), password);
+        await register(email, password, name);
         setMsg({ type: "success", text: "Conta criada com sucesso!" });
       } else {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
+        await login(email, password);
         setMsg({ type: "success", text: "Login realizado!" });
       }
-
-      // ✅ redireciona para /dashboard/overview (ou rota original)
-      goAfterAuth();
     } catch (err) {
       setMsg({ type: "error", text: friendlyAuthError(err) });
     } finally {
@@ -114,14 +91,12 @@ export default function LoginPage() {
     }
   };
 
-  const loginGoogle = async () => {
+  const handleGoogle = async () => {
     setMsg({ type: "", text: "" });
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      await loginGoogle();
       setMsg({ type: "success", text: "Login com Google realizado!" });
-      // ✅ redireciona
-      goAfterAuth();
     } catch (err) {
       setMsg({ type: "error", text: friendlyAuthError(err) });
     } finally {
@@ -129,7 +104,7 @@ export default function LoginPage() {
     }
   };
 
-  const resetPass = async () => {
+  const handleResetPass = async () => {
     setMsg({ type: "", text: "" });
     if (!email?.trim()) {
       setMsg({ type: "error", text: "Informe seu e-mail para recuperar a senha." });
@@ -137,11 +112,8 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email.trim());
-      setMsg({
-        type: "success",
-        text: "E-mail de recuperação enviado. Verifique sua caixa de entrada.",
-      });
+      await resetPassword(email);
+      setMsg({ type: "success", text: "E-mail de recuperação enviado. Verifique sua caixa de entrada." });
     } catch (err) {
       setMsg({ type: "error", text: friendlyAuthError(err) });
     } finally {
@@ -173,8 +145,8 @@ export default function LoginPage() {
           </h1>
 
           <p className="text-lg text-slate-400 mb-10 leading-relaxed max-w-md">
-            A suíte definitiva para gestão patrimonial de alta performance. Segurança, inteligência e
-            controle em um só lugar.
+            A suíte definitiva para gestão patrimonial de alta performance. Segurança, inteligência e controle em um só
+            lugar.
           </p>
 
           <div className="space-y-6">
@@ -184,9 +156,7 @@ export default function LoginPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-white mb-1">Segurança de Nível Bancário</h3>
-                <p className="text-sm text-slate-400">
-                  Criptografia de ponta a ponta para seus dados mais sensíveis.
-                </p>
+                <p className="text-sm text-slate-400">Criptografia e autenticação para acesso restrito.</p>
               </div>
             </div>
 
@@ -196,16 +166,12 @@ export default function LoginPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-white mb-1">Gestão Patrimonial 360º</h3>
-                <p className="text-sm text-slate-400">
-                  Acompanhe ativos globais, sucessão e projeções financeiras.
-                </p>
+                <p className="text-sm text-slate-400">Acompanhe ativos, metas, cenários e projeções financeiras.</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-12 text-xs text-slate-600 font-medium">
-            © 2026 Private Wealth Management. Acesso restrito.
-          </div>
+          <div className="mt-12 text-xs text-slate-600 font-medium">© 2026 Private Wealth. Acesso restrito.</div>
         </div>
       </div>
 
@@ -223,9 +189,7 @@ export default function LoginPage() {
 
         <div className="w-full max-w-[400px] space-y-8">
           <div className="lg:hidden flex justify-center mb-8">
-            <div className="w-10 h-10 rounded-xl bg-[#D4AF37] text-[#0A0C14] grid place-items-center font-black">
-              PW
-            </div>
+            <div className="w-10 h-10 rounded-xl bg-[#D4AF37] text-[#0A0C14] grid place-items-center font-black">PW</div>
           </div>
 
           <div className="space-y-2 text-center lg:text-left">
@@ -235,7 +199,7 @@ export default function LoginPage() {
             <p className="text-slate-400">
               {mode === "login"
                 ? "Bem-vindo de volta! Insira seus dados para continuar."
-                : "Comece sua jornada de gestão patrimonial hoje."}
+                : "Crie sua conta e salve seu nome para aparecer no menu."}
             </p>
           </div>
 
@@ -247,14 +211,37 @@ export default function LoginPage() {
                   : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
               }`}
             >
-              <div className="mt-0.5">
-                {msg.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
-              </div>
+              <div className="mt-0.5">{msg.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}</div>
               <span>{msg.text}</span>
             </div>
           )}
 
           <form onSubmit={submit} className="space-y-5">
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300" htmlFor="name">
+                  Nome
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                    <User size={18} />
+                  </div>
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ex: Guilherme Becker"
+                    className="
+                      w-full bg-[#18181B] border border-[#27272A] rounded-lg px-10 py-2.5 text-white placeholder:text-slate-600
+                      focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]
+                      transition-all
+                    "
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300" htmlFor="email">
                 E-mail
@@ -286,7 +273,7 @@ export default function LoginPage() {
                 {mode === "login" && (
                   <button
                     type="button"
-                    onClick={resetPass}
+                    onClick={handleResetPass}
                     className="text-xs text-[#D4AF37] hover:text-[#E8C766] transition-colors"
                   >
                     Esqueceu a senha?
@@ -343,10 +330,9 @@ export default function LoginPage() {
                 w-full py-2.5 rounded-lg font-bold text-[#09090B]
                 flex items-center justify-center gap-2
                 transition-all duration-200
-                ${
-                  loading || !canSubmit
-                    ? "bg-[#D4AF37]/50 cursor-not-allowed"
-                    : "bg-[#D4AF37] hover:bg-[#B5952F] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)]"
+                ${loading || !canSubmit
+                  ? "bg-[#D4AF37]/50 cursor-not-allowed"
+                  : "bg-[#D4AF37] hover:bg-[#B5952F] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)]"
                 }
               `}
             >
@@ -366,7 +352,7 @@ export default function LoginPage() {
 
           <button
             type="button"
-            onClick={loginGoogle}
+            onClick={handleGoogle}
             disabled={loading}
             className="
               w-full py-2.5 rounded-lg font-medium text-slate-300
