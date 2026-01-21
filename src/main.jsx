@@ -1,15 +1,18 @@
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App.jsx";
-import "./index.css";
+import { BrowserRouter } from "react-router-dom";
 
-import { AuthProvider } from "./context/AuthContext.jsx";
+import "./index.css";
+import AppRoutes from "./routes/AppRoutes.jsx";
+import { AuthProvider } from "./auth/AuthContext.jsx"; // ajuste o caminho se necessário
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </AuthProvider>
   </React.StrictMode>
 );
