@@ -1,5 +1,6 @@
 // src/engine/FinancialEngine.js
 import { CONFIG } from "../constants/config";
+import { convertToBRL, calculateFxExposure, applyFxShock, DEFAULT_FX_RATES } from "../utils/fx";
 
 // ---------- Utils ----------
 function toNumber(v, fallback = 0) {
@@ -62,6 +63,9 @@ function normalizeAssetBucket(asset) {
   const rawType = asset?.type ?? asset?.assetType ?? asset?.category ?? "";
   const t = normalizeText(rawType);
 
+  // Previdência é tratada como categoria separada (mas líquida para aposentadoria)
+  if (t === "previdencia" || t === "previdência") return "previdencia";
+
   const illiquidTypes = new Set([
     "real_estate",
     "imovel",
@@ -79,20 +83,42 @@ function normalizeAssetBucket(asset) {
   return "financial";
 }
 
-function splitAssets(assets = []) {
+function splitAssets(assets = [], scenarioFx = {}) {
   const list = Array.isArray(assets) ? assets : [];
   let financialTotal = 0;
   let illiquidTotal = 0;
+  let previdenciaTotal = 0;
+  let previdenciaVGBL = 0;
+  let previdenciaPGBL = 0;
 
   for (const a of list) {
-    const val = toNumber(a?.value ?? a?.amount ?? a?.valor ?? 0, 0);
+    // Usar conversão FX para obter valor em BRL
+    const val = convertToBRL(a, scenarioFx) || toNumber(a?.value ?? a?.amount ?? a?.valor ?? 0, 0);
     const bucket = normalizeAssetBucket(a);
-    if (bucket === "illiquid") illiquidTotal += val;
-    else financialTotal += val;
+
+    if (bucket === "previdencia") {
+      previdenciaTotal += val;
+      const planType = a?.previdencia?.planType || "";
+      if (planType === "VGBL") previdenciaVGBL += val;
+      else if (planType === "PGBL") previdenciaPGBL += val;
+    } else if (bucket === "illiquid") {
+      illiquidTotal += val;
+    } else {
+      financialTotal += val;
+    }
   }
 
-  const total = financialTotal + illiquidTotal;
-  return { financialTotal, illiquidTotal, total };
+  // Previdência é líquida para aposentadoria, mas separada para sucessão
+  const total = financialTotal + illiquidTotal + previdenciaTotal;
+
+  return {
+    financialTotal,
+    illiquidTotal,
+    previdenciaTotal,
+    previdenciaVGBL,
+    previdenciaPGBL,
+    total,
+  };
 }
 
 // ---------- Contribution timeline ----------
@@ -211,6 +237,8 @@ function calculateSuccessionInternal(clientDataOrAssets, maybeState, maybeSucces
   let assets = [];
   let state = "SP";
   let configSource = null;
+  let scenarioFx = {};
+  let previdenciaConfig = {};
 
   if (isAssetsArray) {
     assets = clientDataOrAssets || [];
@@ -219,6 +247,8 @@ function calculateSuccessionInternal(clientDataOrAssets, maybeState, maybeSucces
       const obj = maybeState || {};
       state = obj?.state || obj?.successionState || "SP";
       configSource = obj;
+      scenarioFx = obj?.fx || {};
+      previdenciaConfig = obj?.previdenciaSuccession || {};
     } else {
       state = maybeState || "SP";
       configSource = maybeSuccessionCosts ? { successionCosts: maybeSuccessionCosts } : null;
@@ -228,29 +258,63 @@ function calculateSuccessionInternal(clientDataOrAssets, maybeState, maybeSucces
     assets = cd?.assets || [];
     state = cd?.state || cd?.successionState || "SP";
     configSource = cd;
+    scenarioFx = cd?.fx || {};
+    previdenciaConfig = cd?.previdenciaSuccession || {};
   }
 
-  const { financialTotal, illiquidTotal, total } = splitAssets(assets);
+  const {
+    financialTotal,
+    illiquidTotal,
+    previdenciaTotal,
+    previdenciaVGBL,
+    previdenciaPGBL,
+    total,
+  } = splitAssets(assets, scenarioFx);
+
+  // Configurações de previdência na sucessão
+  const excludePrevidenciaFromInventory = previdenciaConfig?.excludeFromInventory !== false; // default true
+  const previdenciaITCMD = previdenciaConfig?.applyITCMD === true; // default false
+
+  // Base para custos: se previdência excluída, não entra
+  const inventoryBase = excludePrevidenciaFromInventory
+    ? financialTotal + illiquidTotal
+    : total;
 
   const { itcmdRate, legalPct, feesPct, feesFixed } = configSource
     ? getSuccessionConfigFromClientData(configSource, state)
     : getSuccessionConfigFromCosts({}, state);
 
-  const itcmd = total * itcmdRate;
-  const legal = total * legalPct;
-  const fees = total * feesPct + feesFixed;
+  // Calcular custos sobre a base do inventário
+  const itcmd = inventoryBase * itcmdRate + (previdenciaITCMD ? previdenciaTotal * itcmdRate : 0);
+  const legal = inventoryBase * legalPct;
+  const fees = inventoryBase * feesPct + feesFixed;
 
   const costTotal = itcmd + legal + fees;
-  const liquidityGap = Math.max(0, costTotal - financialTotal);
+
+  // Liquidez disponível: financeiro + previdência (se não bloqueada)
+  const availableLiquidity = financialTotal + (excludePrevidenciaFromInventory ? previdenciaTotal : 0);
+  const liquidityGap = Math.max(0, costTotal - availableLiquidity);
+
+  // Exposição cambial
+  const fxExposure = calculateFxExposure(assets, scenarioFx);
 
   return {
     state,
     financialTotal,
     illiquidTotal,
+    previdenciaTotal,
+    previdenciaVGBL,
+    previdenciaPGBL,
     totalEstate: total,
+    inventoryBase,
     costs: { itcmd, legal, fees, total: costTotal },
     liquidityGap,
     inputs: { itcmdRate, legalPct, feesPct, feesFixed },
+    previdenciaConfig: {
+      excludeFromInventory: excludePrevidenciaFromInventory,
+      applyITCMD: previdenciaITCMD,
+    },
+    fxExposure,
   };
 }
 
@@ -307,15 +371,35 @@ function run(clientData = {}, isStressActiveExternal = false) {
   const stressInflAdd = normalizeRate(CONFIG?.STRESS_INFLATION_ADD, 0);
   const stressRetSub = normalizeRate(CONFIG?.STRESS_RETURN_SUB, 0);
 
+  // Câmbio do cenário (com suporte a stress test)
+  const baseFx = clientData?.fx || {};
+  const fxShocks = isStress ? (clientData?.stressFxShocks || { USD_BRL_pct: 0.2, EUR_BRL_pct: 0.2 }) : {};
+  const scenarioFx = isStress ? applyFxShock(baseFx, fxShocks) : {
+    USD_BRL: baseFx?.USD_BRL ?? DEFAULT_FX_RATES.USD_BRL,
+    EUR_BRL: baseFx?.EUR_BRL ?? DEFAULT_FX_RATES.EUR_BRL,
+  };
+
   const effInfl = isStress ? inflation + stressInflAdd : inflation;
   const effNominal = isStress ? nominalReturn - stressRetSub : nominalReturn;
   const effReal = (1 + effNominal) / Math.max(1e-9, 1 + effInfl) - 1;
 
   const monthlyRealRate = annualToMonthlyRate(effReal);
 
-  const { financialTotal: initialFinancial, illiquidTotal: initialIlliquid, total: totalNow } = splitAssets(
-    clientData.assets || []
-  );
+  const {
+    financialTotal: initialFinancial,
+    illiquidTotal: initialIlliquid,
+    previdenciaTotal: initialPrevidencia,
+    previdenciaPGBL: initialPGBL,
+    previdenciaVGBL: initialVGBL,
+    total: totalNow,
+  } = splitAssets(clientData.assets || [], scenarioFx);
+
+  // ✅ Patrimônio líquido para planejamento: financeiro + previdência
+  // Previdência é líquida para aposentadoria, então entra no patrimônio do plano
+  const initialLiquidForPlan = initialFinancial + initialPrevidencia;
+
+  // Exposição cambial
+  const fxExposure = calculateFxExposure(clientData.assets || [], scenarioFx);
 
   const goalsRaw = Array.isArray(clientData.financialGoals) ? clientData.financialGoals : [];
 
@@ -358,16 +442,12 @@ function run(clientData = {}, isStressActiveExternal = false) {
   const goalsByAge = new Map();
   for (const g of impactGoals) goalsByAge.set(g.age, (goalsByAge.get(g.age) || 0) + g.value);
 
-  let wealth = initialFinancial;
+  // ✅ Patrimônio inicial para projeção INCLUI previdência (líquida para aposentadoria)
+  let wealth = initialLiquidForPlan;
   const series = [];
 
-  // ponto inicial (AGORA)
-  series.push({
-    age: startAge,
-    wealth,
-    financial: wealth,
-    totalWealth: wealth + initialIlliquid,
-  });
+  // ❌ REMOVIDO: ponto inicial "snapshot" - agora o primeiro ponto será o fim do 1º ano
+  // O gráfico começa mostrando o patrimônio após 12 meses de aportes e rendimento
 
   for (let age = startAge; age < endAge; age++) {
     const baseForThisAge = age < contributionEndAge ? baseMonthlyContribution : 0;
@@ -428,6 +508,14 @@ function run(clientData = {}, isStressActiveExternal = false) {
     capitalAposentadoriaFinanceiro: capitalAposentadoria,
     patrimonioAtualFinanceiro: initialFinancial,
     patrimonioAtualBens: initialIlliquid,
+    patrimonioAtualPrevidencia: initialPrevidencia,
+
+    // ✅ Baseline para Tracking: financeiro + previdência (total líquido para plano)
+    baselineWealthBRL: initialLiquidForPlan,
+
+    // Exposição cambial
+    fxExposure,
+    scenarioFx,
 
     _inputs: {
       desiredMonthlyIncome,
@@ -452,12 +540,14 @@ function run(clientData = {}, isStressActiveExternal = false) {
     kpis,
     series,
     succession: calculateSuccessionInternal(clientData),
+    fxExposure,
   };
 }
 
 const FinancialEngine = {
   run,
   calculateSuccession: calculateSuccessionInternal,
+  splitAssets,
 };
 
 export default FinancialEngine;

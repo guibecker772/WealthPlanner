@@ -1,0 +1,100 @@
+// REGRAS DE SEGURANÇA DO FIRESTORE - PRODUÇÃO
+// Copie este conteúdo para o console do Firebase > Firestore > Rules
+// Console: https://console.firebase.google.com/project/[SEU-PROJETO]/firestore/rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================
+    // REGRA PRINCIPAL: Simulações do Usuário
+    // ========================================
+    // Cada usuário só pode ler/escrever suas próprias simulações
+    match /users/{uid}/simulations/{simId} {
+      // Permite read/write apenas se o usuário autenticado é o dono
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      
+      // Validações opcionais de schema (recomendado para produção robusta)
+      // allow create: if request.auth != null 
+      //   && request.auth.uid == uid
+      //   && request.resource.data.name is string
+      //   && request.resource.data.data is map;
+      //
+      // allow update: if request.auth != null 
+      //   && request.auth.uid == uid
+      //   && request.resource.data.name is string
+      //   && request.resource.data.data is map;
+    }
+    
+    // ========================================
+    // REGRA: Dados do Usuário (profile, settings)
+    // ========================================
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // ========================================
+    // REGRA: Tracking por Cenário
+    // ========================================
+    match /users/{uid}/tracking/{trackingId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    
+    // ========================================
+    // NEGAR TODO O RESTO
+    // ========================================
+    // Por padrão, negar acesso a qualquer outro documento
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+========================================
+NOTAS DE IMPLEMENTAÇÃO
+========================================
+
+1. MODO TESTE vs PRODUÇÃO
+   - Em modo teste, as regras permitem tudo por 30 dias
+   - Em produção, use as regras acima para segurança
+
+2. ÍNDICES
+   - Se usar orderBy(updatedAt, desc), o Firestore pode pedir índice
+   - O console mostrará um link para criar automaticamente
+   - Índice recomendado: users/{uid}/simulations - updatedAt DESC
+
+3. ESTRUTURA DE DADOS ESPERADA
+   Document: /users/{uid}/simulations/{simId}
+   {
+     name: string,           // Nome do cenário
+     data: map,              // clientData completo
+     createdAt: timestamp,   // Quando foi criado
+     updatedAt: timestamp    // Última atualização
+   }
+
+4. MIGRAÇÃO DE LOCALSTORAGE
+   - O app migra dados do localStorage automaticamente
+   - Após migração, define flag 'wealthplanner_migrated_to_firestore'
+   - LocalStorage mantém apenas: viewMode, aiEnabled, activeSimId, tracking
+
+5. QUOTAS E LIMITES (Plano Gratuito Spark)
+   - 50K leituras/dia
+   - 20K escritas/dia
+   - 20K deletes/dia
+   - 1GB armazenamento
+   - Para mais, upgrade para Blaze
+
+6. BACKUP
+   - Configure exports automáticos via Cloud Functions
+   - Ou use o console para exportar manualmente
+
+========================================
+COMO APLICAR
+========================================
+1. Acesse: https://console.firebase.google.com
+2. Selecione seu projeto
+3. Vá em Firestore Database > Rules
+4. Cole as regras acima
+5. Clique em "Publish"
+*/

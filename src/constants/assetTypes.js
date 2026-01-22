@@ -1,4 +1,4 @@
-import { Wallet, Building2, Car, Briefcase } from "lucide-react";
+import { Wallet, Building2, Car, Briefcase, ScrollText, Globe } from "lucide-react";
 
 export const ASSET_TYPES = {
   financial: {
@@ -22,6 +22,20 @@ export const ASSET_TYPES = {
     bg: "bg-amber-100",
     text: "text-amber-700",
   },
+  previdencia: {
+    label: "Previdência",
+    icon: ScrollText,
+    color: "#8b5cf6",
+    bg: "bg-violet-100",
+    text: "text-violet-700",
+  },
+  international: {
+    label: "Internacional",
+    icon: Globe,
+    color: "#0ea5e9",
+    bg: "bg-sky-100",
+    text: "text-sky-700",
+  },
   other: {
     label: "Outros",
     icon: Briefcase,
@@ -30,3 +44,22 @@ export const ASSET_TYPES = {
     text: "text-slate-700",
   },
 };
+
+// Tipos de planos de previdência
+export const PREVIDENCIA_PLAN_TYPES = [
+  { value: "VGBL", label: "VGBL" },
+  { value: "PGBL", label: "PGBL" },
+];
+
+// Regimes tributários
+export const PREVIDENCIA_TAX_REGIMES = [
+  { value: "progressivo", label: "Progressivo" },
+  { value: "regressivo", label: "Regressivo" },
+];
+
+// Moedas suportadas
+export const CURRENCIES = [
+  { value: "BRL", label: "BRL (R$)", symbol: "R$" },
+  { value: "USD", label: "USD ($)", symbol: "$" },
+  { value: "EUR", label: "EUR (€)", symbol: "€" },
+];

@@ -70,11 +70,20 @@ export default class TrackingEngine {
     // Engine base só para pegar patrimonio inicial + taxa real do plano (effReal)
     const baseEngine = FinancialEngine.run(clientData || {}, isStressTest);
 
+    // ✅ Baseline = financeiro + previdência (total líquido do cenário para plano)
+    // Usa baselineWealthBRL se disponível, senão fallback para financeiro + previdência
     const patrimonioInicial = Number(
-      baseEngine?.kpis?.patrimonioAtualFinanceiro ??
-        baseEngine?.kpis?.initialFinancialWealth ??
-        0
-    );
+      baseEngine?.kpis?.baselineWealthBRL ??
+        (baseEngine?.kpis?.patrimonioAtualFinanceiro ?? 0) +
+        (baseEngine?.kpis?.patrimonioAtualPrevidencia ?? 0)
+    ) || 0;
+
+    // ✅ Log temporário para debug (remover depois)
+    console.log('[TrackingEngine] patrimonioInicial (baseline):', patrimonioInicial, {
+      baselineWealthBRL: baseEngine?.kpis?.baselineWealthBRL,
+      patrimonioAtualFinanceiro: baseEngine?.kpis?.patrimonioAtualFinanceiro,
+      patrimonioAtualPrevidencia: baseEngine?.kpis?.patrimonioAtualPrevidencia,
+    });
 
     const effRealAnnual = Number(baseEngine?.kpis?._inputs?.effReal ?? 0);
     const effRealMonthly = annualToMonthlyRate(effRealAnnual);

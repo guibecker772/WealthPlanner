@@ -43,8 +43,59 @@ export function clamp(n, min, max) {
 }
 
 // -----------------------------
-// Currency (BRL)
+// Currency (multi-moeda)
 // -----------------------------
+
+/**
+ * Formata valor na moeda especificada (BRL, USD, EUR)
+ * @param {number} value - Valor numérico
+ * @param {string} currency - 'BRL' | 'USD' | 'EUR'
+ * @param {object} opts - Opções de formatação
+ * @returns {string} - Valor formatado (ex: "R$ 1.234,56", "US$ 1,234.56", "€ 1.234,56")
+ */
+export function formatCurrencyWithCode(value, currency = "BRL", opts = {}) {
+  const {
+    minimumFractionDigits = 2,
+    maximumFractionDigits = 2,
+    fallback = null,
+  } = opts;
+
+  const n = toNumber(value, NaN);
+  
+  // Fallback dinâmico baseado na moeda
+  const defaultFallback = {
+    BRL: "R$ 0,00",
+    USD: "US$ 0.00",
+    EUR: "€ 0,00",
+  }[currency] || "R$ 0,00";
+
+  if (!Number.isFinite(n)) return fallback ?? defaultFallback;
+
+  // Locale por moeda
+  const localeMap = {
+    BRL: "pt-BR",
+    USD: "en-US",
+    EUR: "de-DE", // alemão usa . para milhares e , para decimal
+  };
+
+  const locale = localeMap[currency] || "pt-BR";
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    }).format(n);
+  } catch {
+    const prefix = { BRL: "R$", USD: "US$", EUR: "€" }[currency] || "R$";
+    return `${prefix} ${n.toFixed(maximumFractionDigits)}`;
+  }
+}
+
+/**
+ * Formata valor em BRL (função original para compatibilidade)
+ */
 export function formatCurrencyBR(value, opts = {}) {
   const {
     minimumFractionDigits = 2,
@@ -72,6 +123,16 @@ export function formatCurrencyBR(value, opts = {}) {
  * Alguns arquivos antigos importam `formatCurrency`.
  */
 export const formatCurrency = formatCurrencyBR;
+
+/**
+ * Retorna símbolo da moeda
+ * @param {string} currency - 'BRL' | 'USD' | 'EUR'
+ * @returns {string} - Símbolo (R$, US$, €)
+ */
+export function getCurrencySymbol(currency = "BRL") {
+  const symbols = { BRL: "R$", USD: "US$", EUR: "€" };
+  return symbols[currency] || "R$";
+}
 
 export function parseCurrencyBR(input, fallback = 0) {
   return toNumber(input, fallback);

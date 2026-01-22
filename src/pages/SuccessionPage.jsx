@@ -2,13 +2,15 @@
 import React, { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Scale, ArrowRight, AlertCircle, CheckCircle2, Shield } from "lucide-react";
+import { Scale, ArrowRight, AlertCircle, CheckCircle2, Shield, ScrollText, Calculator } from "lucide-react";
 
 import { Card, StrategyView } from "../components";
 import FinancialEngine from "../engine/FinancialEngine";
 import { CONFIG } from "../constants/config";
 import { formatCurrencyBR } from "../utils/format";
 import { SUCCESSION_STRATEGIES } from "../constants/successionStrategies";
+import PrevidenciaSuccessionCard from "../components/succession/PrevidenciaSuccessionCard";
+import PGBLEfficiencyCard from "../components/succession/PGBLEfficiencyCard";
 
 function asNumber(v) {
   const n = Number(v);
@@ -40,7 +42,7 @@ function getMonthlyCostRetirement(clientData) {
 
 export default function SuccessionPage() {
   const ctx = useOutletContext() || {};
-  const { clientData, analysis } = ctx;
+  const { clientData, analysis, updateField, readOnly } = ctx;
   const kpis = analysis?.kpis;
 
   if (!clientData) {
@@ -52,6 +54,7 @@ export default function SuccessionPage() {
   }
   const [activeStrategyId, setActiveStrategyId] = useState("overview");
   const [incomeInsuranceBase, setIncomeInsuranceBase] = useState("now");
+  const [previdenciaSubTab, setPrevidenciaSubTab] = useState("overview"); // "overview" | "efficiency"
 
   const monthlyCostNow = useMemo(() => getMonthlyCostNow(clientData), [clientData]);
   const monthlyCostRetirement = useMemo(() => getMonthlyCostRetirement(clientData), [clientData]);
@@ -120,6 +123,32 @@ export default function SuccessionPage() {
             {st.title}
           </button>
         ))}
+
+        {/* Nova aba: Previdência Privada */}
+        <button
+          onClick={() => setActiveStrategyId("previdencia-tab")}
+          className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
+            activeStrategyId === "previdencia-tab"
+              ? "bg-violet-500 text-white"
+              : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+          }`}
+        >
+          {activeStrategyId === "previdencia-tab" && <ScrollText size={14} />}
+          Previdência Privada
+        </button>
+
+        {/* Nova aba: Eficiência PGBL */}
+        <button
+          onClick={() => setActiveStrategyId("pgbl-efficiency")}
+          className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
+            activeStrategyId === "pgbl-efficiency"
+              ? "bg-amber-500 text-navy-950"
+              : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+          }`}
+        >
+          {activeStrategyId === "pgbl-efficiency" && <Calculator size={14} />}
+          Eficiência Fiscal PGBL
+        </button>
       </div>
 
       {activeStrategyId === "overview" ? (
@@ -310,7 +339,42 @@ export default function SuccessionPage() {
               </div>
             </div>
           </div>
+
+          {/* Bloco de Previdência na Visão Geral */}
+          {(successionInfo?.previdenciaTotal || 0) > 0 && (
+            <div className="lg:col-span-3">
+              <Card title="Previdência na Sucessão" className="bg-violet-900/20 border-violet-500/20">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                    <p className="text-xs text-violet-400 font-bold uppercase">Total Previdência</p>
+                    <p className="text-2xl font-bold text-violet-300">{formatCurrencyBR(successionInfo.previdenciaTotal)}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="text-xs text-emerald-400 font-bold uppercase">VGBL</p>
+                    <p className="text-2xl font-bold text-emerald-300">{formatCurrencyBR(successionInfo.previdenciaVGBL || 0)}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <p className="text-xs text-amber-400 font-bold uppercase">PGBL</p>
+                    <p className="text-2xl font-bold text-amber-300">{formatCurrencyBR(successionInfo.previdenciaPGBL || 0)}</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-xs text-text-muted">
+                  Previdência privada costuma ficar fora do inventário e ser paga diretamente aos beneficiários.
+                  Clique na aba "Previdência Privada" para mais detalhes.
+                </p>
+              </Card>
+            </div>
+          )}
         </div>
+      ) : activeStrategyId === "previdencia-tab" ? (
+        <PrevidenciaSuccessionCard
+          clientData={clientData}
+          succession={successionInfo}
+          updateField={updateField}
+          readOnly={readOnly}
+        />
+      ) : activeStrategyId === "pgbl-efficiency" ? (
+        <PGBLEfficiencyCard clientData={clientData} readOnly={readOnly} />
       ) : (
         activeStrategy && (
           <StrategyView

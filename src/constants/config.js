@@ -1,6 +1,6 @@
 // src/constants/config.js
 
-export const APP_VERSION = "6.2.3 (Succession CTA + Calendar)";
+export const APP_VERSION = "7.0.0 (FX + Previdência + PGBL Efficiency)";
 
 export const CONFIG = {
   // ---------- Sucessão ----------
@@ -28,6 +28,18 @@ export const CONFIG = {
   // então 1.5 => 0.015 (1,5%), 2.0 => 0.02 (2%)
   STRESS_INFLATION_ADD: 1.5,
   STRESS_RETURN_SUB: 2.0,
+
+  // Choque de câmbio no stress test (em fração: 0.2 = +20%)
+  STRESS_FX_SHOCK: {
+    USD_BRL_pct: 0.2, // +20% no USD/BRL
+    EUR_BRL_pct: 0.2, // +20% no EUR/BRL
+  },
+
+  // ---------- Câmbio Padrão ----------
+  DEFAULT_FX_RATES: {
+    USD_BRL: 5.0,
+    EUR_BRL: 5.5,
+  },
 
   // ---------- ITCMD (fallback) ----------
   // Se você quiser garantir que o motor pegue daqui antes do fallback interno

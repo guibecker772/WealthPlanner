@@ -76,6 +76,32 @@ const DEFAULT_CLIENT = {
   contributionRanges: [],
   contributionTimeline: [],
   cashInEvents: [],
+  
+  // ✅ FX: Câmbio do cenário (USD/EUR para BRL)
+  fx: {
+    USD_BRL: 5.0,
+    EUR_BRL: 5.5,
+  },
+  
+  // ✅ PGBL: Configuração da simulação de eficiência fiscal
+  pgblConfig: {
+    profession: "",
+    monthlyIncome: 25000,
+    annualIncome: 300000,
+    annualContribution: 36000,
+    marginalRate: 0.275,
+    isCompleteDeclaration: true,
+    contributesToINSS: true,
+    reinvestTaxSavings: true,
+    annualReturnRate: 0.08,
+    adminFeeRate: 0.01,
+  },
+  
+  // ✅ Previdência na sucessão
+  previdenciaSuccession: {
+    excludeFromInventory: true,
+    applyITCMD: false,
+  },
 };
 
 function ensureClientShape(data) {
@@ -89,6 +115,42 @@ function ensureClientShape(data) {
 
   const bm = Number(d.birthMonth);
   d.birthMonth = Number.isFinite(bm) && bm >= 1 && bm <= 12 ? bm : 1;
+
+  // ✅ FX: garantir defaults seguros
+  d.fx = {
+    USD_BRL: Number.isFinite(Number(d.fx?.USD_BRL)) && Number(d.fx?.USD_BRL) > 0 ? Number(d.fx.USD_BRL) : 5.0,
+    EUR_BRL: Number.isFinite(Number(d.fx?.EUR_BRL)) && Number(d.fx?.EUR_BRL) > 0 ? Number(d.fx.EUR_BRL) : 5.5,
+  };
+  
+  // ✅ PGBL Config: mesclar com defaults
+  d.pgblConfig = {
+    ...DEFAULT_CLIENT.pgblConfig,
+    ...(d.pgblConfig || {}),
+  };
+  
+  // ✅ Previdência Sucessão: mesclar com defaults
+  d.previdenciaSuccession = {
+    ...DEFAULT_CLIENT.previdenciaSuccession,
+    ...(d.previdenciaSuccession || {}),
+  };
+  
+  // ✅ Normalizar ativos de previdência (compatibilidade retroativa)
+  d.assets = d.assets.map(asset => {
+    if (asset.type === "previdencia" && !asset.previdencia) {
+      return {
+        ...asset,
+        previdencia: {
+          planType: "VGBL",
+          taxRegime: "regressivo",
+          provider: "",
+          adminFee: null,
+          notes: "",
+          beneficiaries: [],
+        },
+      };
+    }
+    return asset;
+  });
 
   return d;
 }
