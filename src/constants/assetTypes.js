@@ -63,3 +63,33 @@ export const CURRENCIES = [
   { value: "USD", label: "USD ($)", symbol: "$" },
   { value: "EUR", label: "EUR (€)", symbol: "€" },
 ];
+
+// Classes de ativos para breakdown de carteira (Brasil - padrão do Guia de Alocação)
+export const PORTFOLIO_CLASSES_BR = [
+  { key: 'caixa', label: 'Caixa / Liquidez', description: 'Reserva de emergência, poupança' },
+  { key: 'pos', label: 'Pós-fixado (CDI)', description: 'CDBs, LCI, LCA, fundos DI' },
+  { key: 'pre', label: 'Pré-fixado', description: 'LTN, CDB pré, debêntures pré' },
+  { key: 'ipca', label: 'Inflação (IPCA+)', description: 'Tesouro IPCA+, NTN-B, debêntures IPCA' },
+  { key: 'acoes', label: 'Ações Brasil', description: 'Ações B3, fundos de ações, small caps' },
+  { key: 'fiis', label: 'FIIs', description: 'Fundos imobiliários' },
+  { key: 'exterior', label: 'Exterior', description: 'ETFs, BDRs, stocks internacionais' },
+  { key: 'outros', label: 'Outros', description: 'Multimercado, COE, cripto, alternativos' },
+];
+
+// Classes de ativos para breakdown internacional
+export const PORTFOLIO_CLASSES_INTL = [
+  { key: 'cash', label: 'Cash', description: 'Money market, short-term bonds' },
+  { key: 'bonds_nominal', label: 'Bonds (Nominal)', description: 'Treasury bonds, corporate bonds' },
+  { key: 'bonds_inflation', label: 'Bonds (TIPS)', description: 'Inflation-protected bonds' },
+  { key: 'equities', label: 'Equities', description: 'Stocks, equity ETFs' },
+  { key: 'reits', label: 'REITs', description: 'Real estate investment trusts' },
+  { key: 'alternatives', label: 'Alternatives', description: 'Hedge funds, private equity' },
+  { key: 'crypto_other', label: 'Crypto / Other', description: 'Cryptocurrencies, commodities' },
+];
+
+// Modos de detalhamento de carteira
+export const PORTFOLIO_DETAIL_MODES = [
+  { value: 'BR', label: 'Brasil (8 classes)' },
+  { value: 'INTL', label: 'Internacional (7 classes)' },
+  { value: 'CUSTOM', label: 'Personalizado (usar classes BR)' },
+];

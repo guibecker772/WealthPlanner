@@ -21,7 +21,14 @@ import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import { formatCurrencyBR, formatCurrencyWithCode, getCurrencySymbol, safeNumber } from "../utils/format";
 import { convertToBRL, calculateFxExposure, DEFAULT_FX_RATES, validateAssetFx } from "../utils/fx";
-import { CURRENCIES, PREVIDENCIA_PLAN_TYPES, PREVIDENCIA_TAX_REGIMES } from "../constants/assetTypes";
+import { 
+  CURRENCIES, 
+  PREVIDENCIA_PLAN_TYPES, 
+  PREVIDENCIA_TAX_REGIMES,
+  PORTFOLIO_CLASSES_BR,
+  PORTFOLIO_CLASSES_INTL,
+  PORTFOLIO_DETAIL_MODES,
+} from "../constants/assetTypes";
 
 const TYPE_ICONS = {
   financial: Wallet,
@@ -114,11 +121,137 @@ function CurrencyValueInput({ value, onChange, currency = "BRL", disabled = fals
   );
 }
 
+// ✅ Componente de Detalhes da Carteira Financeira
+function FinancialPortfolioDetailsPanel({
+  asset,
+  readOnly,
+  updatePortfolioDetails,
+  updateBreakdownField,
+  normalizeBreakdown,
+  getDefaultPortfolioDetails,
+}) {
+  const details = asset.portfolioDetails || getDefaultPortfolioDetails();
+  const detailMode = details.detailMode || 'BR';
+  const isEnabled = details.enabled !== false;
+
+  // Determinar qual breakdown usar e quais classes
+  const isBR = detailMode === 'BR';
+  const isIntl = detailMode === 'INTL';
+  const breakdownKey = isBR ? 'breakdown' : 'intlBreakdown';
+  const classes = isBR ? PORTFOLIO_CLASSES_BR : PORTFOLIO_CLASSES_INTL;
+  const currentBreakdown = details[breakdownKey] || {};
+
+  // Calcular soma atual
+  const totalPercent = Object.values(currentBreakdown).reduce((s, v) => s + safeNumber(v, 0), 0);
+  const isBalanced = totalPercent === 100;
+  const sumColor = totalPercent === 100 ? 'text-emerald-400' : totalPercent > 100 ? 'text-rose-400' : 'text-amber-400';
+  const sumBg = totalPercent === 100 ? 'bg-emerald-500/10' : totalPercent > 100 ? 'bg-rose-500/10' : 'bg-amber-500/10';
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border space-y-4">
+      {/* Header com toggle e modo */}
+      <div className="flex flex-wrap items-center gap-4 justify-between">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isEnabled}
+              onChange={(e) => updatePortfolioDetails('enabled', e.target.checked)}
+              disabled={readOnly}
+              className="w-4 h-4 rounded border-border text-accent focus:ring-accent/50 bg-surface-muted"
+            />
+            <span className="text-sm font-semibold text-text-primary">Detalhar classes</span>
+          </label>
+        </div>
+
+        {isEnabled && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-text-secondary">Modo:</label>
+            <select
+              className="bg-surface-muted border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary outline-none focus:ring-1 focus:ring-accent/40"
+              value={detailMode}
+              onChange={(e) => updatePortfolioDetails('detailMode', e.target.value)}
+              disabled={readOnly}
+            >
+              {PORTFOLIO_DETAIL_MODES.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Breakdown Editor */}
+      {isEnabled && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {Object.entries(classes).map(([key, config]) => (
+              <div key={key} className="space-y-1">
+                <label className="text-xs text-text-secondary font-medium" title={config.description}>
+                  {config.label}
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={safeNumber(currentBreakdown[key], 0)}
+                    onChange={(e) => updateBreakdownField(breakdownKey, key, parseFloat(e.target.value) || 0)}
+                    disabled={readOnly}
+                    className="w-full bg-surface-muted border border-border rounded-lg px-3 py-2 pr-8 text-sm text-text-primary outline-none focus:ring-1 focus:ring-accent/40"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Soma e normalizar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${sumBg}`}>
+              <span className="text-xs text-text-secondary">Soma:</span>
+              <span className={`text-sm font-bold ${sumColor}`}>{totalPercent}%</span>
+              {!isBalanced && (
+                <span className="text-xs text-text-muted">
+                  ({totalPercent > 100 ? `+${totalPercent - 100}%` : `-${100 - totalPercent}%`})
+                </span>
+              )}
+            </div>
+
+            {!isBalanced && !readOnly && (
+              <button
+                onClick={() => normalizeBreakdown(breakdownKey)}
+                className="text-xs text-accent hover:text-accent/80 underline transition-colors"
+              >
+                Normalizar para 100%
+              </button>
+            )}
+          </div>
+
+          {/* Notas */}
+          <div>
+            <label className="text-xs text-text-secondary font-semibold">Observações da carteira</label>
+            <Input
+              value={details.notes || ''}
+              onChange={(e) => updatePortfolioDetails('notes', e.target.value)}
+              disabled={readOnly}
+              placeholder="Notas sobre a composição, estratégia, etc."
+              className="mt-1"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AssetsPage() {
   const ctx = useOutletContext() || {};
   const { clientData, updateField, readOnly } = ctx;
   const [showFxSettings, setShowFxSettings] = useState(false);
-  const [expandedAssetId, setExpandedAssetId] = useState(null);
+  const [expandedAssetId, setExpandedAssetId] = useState(null); // Para previdência
+  const [expandedFinancialId, setExpandedFinancialId] = useState(null); // Para financeiro
   
   // ✅ Estados locais para inputs de FX (permite digitação livre)
   const [fxInputUSD, setFxInputUSD] = useState("");
@@ -247,6 +380,76 @@ export default function AssetsPage() {
         };
       })
     );
+  };
+
+  // ✅ Atualizar campo de portfolioDetails para ativos financeiros
+  const updatePortfolioDetails = (assetId, field, val) => {
+    updateField(
+      "assets",
+      assets.map((a) => {
+        if (a.id !== assetId) return a;
+        const current = a.portfolioDetails || getDefaultPortfolioDetails();
+        return {
+          ...a,
+          portfolioDetails: { ...current, [field]: val },
+        };
+      })
+    );
+  };
+
+  // ✅ Atualizar breakdown de classes (BR ou INTL)
+  const updateBreakdownField = (assetId, breakdownKey, classKey, val) => {
+    updateField(
+      "assets",
+      assets.map((a) => {
+        if (a.id !== assetId) return a;
+        const current = a.portfolioDetails || getDefaultPortfolioDetails();
+        const currentBreakdown = current[breakdownKey] || {};
+        return {
+          ...a,
+          portfolioDetails: {
+            ...current,
+            [breakdownKey]: {
+              ...currentBreakdown,
+              [classKey]: Math.max(0, Math.min(100, safeNumber(val, 0))),
+            },
+          },
+        };
+      })
+    );
+  };
+
+  // ✅ Default para portfolioDetails
+  // FIX: PORTFOLIO_CLASSES_BR é um array de objetos {key, label}, não um objeto
+  // Object.keys() retornava índices ['0','1','2'...], agora usa .map(c => c.key)
+  const getDefaultPortfolioDetails = () => ({
+    enabled: false,
+    detailMode: 'BR',
+    breakdown: Object.fromEntries(PORTFOLIO_CLASSES_BR.map(c => [c.key, 0])),
+    intlBreakdown: Object.fromEntries(PORTFOLIO_CLASSES_INTL.map(c => [c.key, 0])),
+    notes: '',
+  });
+
+  // ✅ Normalizar breakdown para somar 100%
+  const normalizeBreakdown = (assetId, breakdownKey) => {
+    const asset = assets.find(a => a.id === assetId);
+    if (!asset) return;
+    const current = asset.portfolioDetails || getDefaultPortfolioDetails();
+    const currentBreakdown = current[breakdownKey] || {};
+    const total = Object.values(currentBreakdown).reduce((s, v) => s + safeNumber(v, 0), 0);
+    if (total === 0) return;
+    const normalized = {};
+    Object.entries(currentBreakdown).forEach(([k, v]) => {
+      normalized[k] = Math.round((safeNumber(v, 0) / total) * 100);
+    });
+    // Ajustar arredondamento para garantir soma exata
+    const newTotal = Object.values(normalized).reduce((s, v) => s + v, 0);
+    if (newTotal !== 100) {
+      const diff = 100 - newTotal;
+      const maxKey = Object.keys(normalized).reduce((a, b) => normalized[a] > normalized[b] ? a : b);
+      normalized[maxKey] += diff;
+    }
+    updatePortfolioDetails(assetId, breakdownKey, normalized);
   };
 
   // Normaliza valor de input (pode vir como número direto ou evento)
@@ -525,6 +728,17 @@ export default function AssetsPage() {
                         </button>
                       )}
 
+                      {/* Botão de detalhes para ativos financeiros */}
+                      {asset.type === 'financial' && (
+                        <button
+                          onClick={() => setExpandedFinancialId(expandedFinancialId === asset.id ? null : asset.id)}
+                          className="p-2 rounded-lg text-text-secondary hover:text-accent hover:bg-surface-highlight transition-all"
+                          title="Detalhes da carteira"
+                        >
+                          {expandedFinancialId === asset.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </button>
+                      )}
+
                       {!readOnly && (
                         <Button
                           variant="ghost"
@@ -605,7 +819,31 @@ export default function AssetsPage() {
                           className="mt-1"
                         />
                       </div>
+
+                      {/* ✅ FIX BUG 2: Painel de detalhamento de classes para Previdência */}
+                      <div className="md:col-span-3 pt-4 border-t border-border/50">
+                        <FinancialPortfolioDetailsPanel
+                          asset={asset}
+                          readOnly={readOnly}
+                          updatePortfolioDetails={(field, val) => updatePortfolioDetails(asset.id, field, val)}
+                          updateBreakdownField={(breakdownKey, classKey, val) => updateBreakdownField(asset.id, breakdownKey, classKey, val)}
+                          normalizeBreakdown={(breakdownKey) => normalizeBreakdown(asset.id, breakdownKey)}
+                          getDefaultPortfolioDetails={getDefaultPortfolioDetails}
+                        />
+                      </div>
                     </div>
+                  )}
+
+                  {/* ✅ Detalhes de Carteira Financeira */}
+                  {asset.type === 'financial' && expandedFinancialId === asset.id && (
+                    <FinancialPortfolioDetailsPanel
+                      asset={asset}
+                      readOnly={readOnly}
+                      updatePortfolioDetails={(field, val) => updatePortfolioDetails(asset.id, field, val)}
+                      updateBreakdownField={(breakdownKey, classKey, val) => updateBreakdownField(asset.id, breakdownKey, classKey, val)}
+                      normalizeBreakdown={(breakdownKey) => normalizeBreakdown(asset.id, breakdownKey)}
+                      getDefaultPortfolioDetails={getDefaultPortfolioDetails}
+                    />
                   )}
                 </div>
               );

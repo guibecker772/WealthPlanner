@@ -15,6 +15,7 @@ import ScenariosPage from "../pages/ScenariosPage.jsx";
 import GoalsPage from "../pages/GoalsPage.jsx";
 import SuccessionPage from "../pages/SuccessionPage.jsx";
 import SettingsPage from "../pages/SettingsPage.jsx";
+import AllocationGuidePage from "../pages/AllocationGuidePage.jsx";
 
 import AccountPage from "../pages/AccountPage.jsx";
 import SecurityPage from "../pages/SecurityPage.jsx";
@@ -43,6 +44,7 @@ export default function AppRoutes() {
           <Route path="scenarios" element={<ScenariosPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="succession" element={<SuccessionPage />} />
+          <Route path="allocation" element={<AllocationGuidePage />} />
           <Route path="settings" element={<SettingsPage />} />
 
           {/* novas rotas */}

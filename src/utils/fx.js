@@ -84,6 +84,7 @@ export function normalizeAssetCurrency(asset) {
 
 /**
  * Calcula exposição cambial do patrimônio
+ * FIX BUG 3: Filtrar apenas ativos investíveis (financial, previdencia)
  * @param {Array} assets - Lista de ativos
  * @param {object} scenarioFx - Câmbios do cenário
  * @returns {object} - { totalBRL, byCurrency: { BRL, USD, EUR }, percentages }
@@ -91,7 +92,16 @@ export function normalizeAssetCurrency(asset) {
 export function calculateFxExposure(assets = [], scenarioFx = {}) {
   const byCurrency = { BRL: 0, USD: 0, EUR: 0 };
 
+  // ✅ FIX BUG 3: Tipos investíveis apenas
+  const INVESTABLE_TYPES = ['financial', 'previdencia'];
+
   for (const asset of assets) {
+    // FIX BUG 3: Pular ativos ilíquidos (imóvel, veículo, empresa, outros bens)
+    const type = asset?.type || 'financial';
+    if (!INVESTABLE_TYPES.includes(type)) {
+      continue; // Ignorar real_estate, vehicle, business, other
+    }
+
     const currency = asset?.currency || "BRL";
     const amountBRL = convertToBRL(asset, scenarioFx);
     byCurrency[currency] = (byCurrency[currency] || 0) + amountBRL;

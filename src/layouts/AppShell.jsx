@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Settings as SettingsIcon,
   Shield,
+  PieChart,
 } from "lucide-react";
 
 import FinancialEngine from "../engine/FinancialEngine";
@@ -133,11 +134,43 @@ function ensureClientShape(data) {
     ...DEFAULT_CLIENT.previdenciaSuccession,
     ...(d.previdenciaSuccession || {}),
   };
+
+  // ✅ Allocation Guide: inicializar se não existir (FASE 1)
+  // NÃO influencia FinancialEngine nem projeções - feature isolada
+  if (!d.allocationGuide) {
+    const inflation = d.inflation ?? d.inflacao ?? 0.05;
+    d.allocationGuide = {
+      portfolios: [],
+      objective: {
+        mode: 'targetReturn',
+        targetRealReturn: 0.06,
+        targetVol: 0.10,
+      },
+      assumptions: {
+        inflationAnnual: inflation,
+        classReturnsNominal: {
+          cash: 0.10, pos: 0.11, pre: 0.115, ipca: 0.12,
+          acoes: 0.14, fiis: 0.13, exterior: 0.13, outros: 0.10,
+        },
+        classVolAnnual: {
+          cash: 0.005, pos: 0.02, pre: 0.04, ipca: 0.05,
+          acoes: 0.20, fiis: 0.18, exterior: 0.22, outros: 0.10,
+        },
+        correlation: null, // usa default do allocationMath
+      },
+      importedPortfolioId: null, // FASE 5: ID da carteira importada do patrimônio
+    };
+  }
+  // Garantir que importedPortfolioId existe mesmo em allocationGuide existente
+  if (d.allocationGuide && d.allocationGuide.importedPortfolioId === undefined) {
+    d.allocationGuide.importedPortfolioId = null;
+  }
   
   // ✅ Normalizar ativos de previdência (compatibilidade retroativa)
   d.assets = d.assets.map(asset => {
+    // Previdência: garantir estrutura previdencia
     if (asset.type === "previdencia" && !asset.previdencia) {
-      return {
+      asset = {
         ...asset,
         previdencia: {
           planType: "VGBL",
@@ -149,6 +182,47 @@ function ensureClientShape(data) {
         },
       };
     }
+    
+    // ✅ FIX BUG 2: Previdência também precisa de portfolioDetails
+    if (asset.type === "previdencia" && !asset.portfolioDetails) {
+      asset = {
+        ...asset,
+        portfolioDetails: {
+          enabled: false,
+          detailMode: 'BR',
+          breakdown: {
+            caixa: 0, pos: 0, pre: 0, ipca: 0,
+            acoes: 0, fiis: 0, exterior: 0, outros: 0,
+          },
+          intlBreakdown: {
+            cash: 0, bonds_nominal: 0, bonds_inflation: 0,
+            equities: 0, reits: 0, alternatives: 0, crypto_other: 0,
+          },
+          notes: '',
+        },
+      };
+    }
+    
+    // ✅ Financeiro: garantir estrutura portfolioDetails (FASE 2 - compat retroativa)
+    if (asset.type === "financial" && !asset.portfolioDetails) {
+      asset = {
+        ...asset,
+        portfolioDetails: {
+          enabled: false,
+          detailMode: 'BR',
+          breakdown: {
+            caixa: 0, pos: 0, pre: 0, ipca: 0,
+            acoes: 0, fiis: 0, exterior: 0, outros: 0,
+          },
+          intlBreakdown: {
+            cash: 0, bonds_nominal: 0, bonds_inflation: 0,
+            equities: 0, reits: 0, alternatives: 0, crypto_other: 0,
+          },
+          notes: '',
+        },
+      };
+    }
+    
     return asset;
   });
 
@@ -323,6 +397,7 @@ function MainSidebar({ viewMode, logout }) {
     { to: "/dashboard/scenarios", label: "Cenários", icon: GitBranch },
     { to: "/dashboard/goals", label: "Metas", icon: Flag },
     { to: "/dashboard/succession", label: "Sucessão", icon: Scale },
+    { to: "/dashboard/allocation", label: "Guia de Alocação", icon: PieChart },
     { to: "/dashboard/settings", label: "Dados do Cliente", icon: UserCircle2 },
   ];
 
