@@ -960,7 +960,7 @@ export default function AllocationGuidePage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
         {/* Coluna 1: Lista de Carteiras */}
         <div className="lg:col-span-1">
           <Card 
@@ -1119,8 +1119,8 @@ export default function AllocationGuidePage() {
           </Card>
         </div>
 
-        {/* Coluna 2-3: Detalhes da Carteira */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Coluna 2: Detalhes da Carteira */}
+        <div className="space-y-6">
           {!selectedPortfolio ? (
             <Card className="h-full flex items-center justify-center py-16">
               <div className="text-center">

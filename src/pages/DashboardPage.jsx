@@ -30,7 +30,17 @@ import Card from "../components/ui/Card";
 
 import FinancialEngine from "../engine/FinancialEngine";
 import TrackingEngine from "../engine/TrackingEngine";
-import { formatCurrencyBR, formatPercent } from "../utils/format";
+import {
+  formatCurrencyBR,
+  formatPercent,
+  annualToMonthlyRate,
+  compoundMonthlyRate,
+  formatPercentPtBr,
+  formatDeltaPp,
+  getExpectedReturnByProfile,
+  nominalToRealReturn,
+  toNumber,
+} from "../utils/format";
 
 import MonthlyTrackingCard from "../components/tracking/MonthlyTrackingCard";
 
@@ -659,6 +669,66 @@ const baseKpis = engineOutput?.kpis || {};
     }
   }, [scenarioId, trackingByScenario, clientData, isStressTest, selectedYear]);
 
+  // ========================================
+  // Cálculo YTD Real vs Projetado
+  // ========================================
+  const ytdComparison = useMemo(() => {
+    const yearSummary = tracking?.yearSummary;
+    const monthsCount = yearSummary?.monthsCount ?? 0;
+
+    // Se não há lançamentos, retornar nulo
+    if (monthsCount === 0) {
+      return {
+        hasData: false,
+        monthsCount: 0,
+        retorno: { real: null, projetadoReal: null, projetadoNominal: null, delta: null },
+        inflacao: { real: null, projetado: null, delta: null },
+      };
+    }
+
+    // ---- REAL YTD (já calculado pelo TrackingEngine) ----
+    const retornoRealYTD = yearSummary?.retorno?.acumuladoPct ?? null; // em %
+    const inflacaoRealYTD = yearSummary?.inflacao?.acumuladaPct ?? null; // em %
+
+    // ---- PROJETADO YTD ----
+    // Inflação anual do cenário (clientData.inflation está em %, ex: 4.5)
+    const inflacaoAnual = toNumber(clientData?.inflation, 4.5) / 100; // decimal
+    const inflacaoMensal = annualToMonthlyRate(inflacaoAnual);
+    const inflacaoProjetadaYTD = compoundMonthlyRate(inflacaoMensal, monthsCount) * 100; // em %
+
+    // Retorno esperado baseado no perfil (nominal)
+    const retornoNominalAnual = getExpectedReturnByProfile(clientData);
+    
+    // Projetado NOMINAL YTD (para exibição educativa)
+    const retornoNominalMensal = annualToMonthlyRate(retornoNominalAnual);
+    const retornoProjetadoNominalYTD = compoundMonthlyRate(retornoNominalMensal, monthsCount) * 100; // em %
+    
+    // Projetado REAL YTD (após descontar inflação)
+    const retornoRealAnual = nominalToRealReturn(retornoNominalAnual, inflacaoAnual);
+    const retornoRealMensal = annualToMonthlyRate(retornoRealAnual);
+    const retornoProjetadoRealYTD = compoundMonthlyRate(retornoRealMensal, monthsCount) * 100; // em %
+
+    // ---- DELTAS (Real informado - Projetado real) em pp ----
+    const deltaRetorno = retornoRealYTD != null ? retornoRealYTD - retornoProjetadoRealYTD : null;
+    const deltaInflacao = inflacaoRealYTD != null ? inflacaoRealYTD - inflacaoProjetadaYTD : null;
+
+    return {
+      hasData: true,
+      monthsCount,
+      retorno: {
+        real: retornoRealYTD,
+        projetadoReal: retornoProjetadoRealYTD,
+        projetadoNominal: retornoProjetadoNominalYTD,
+        delta: deltaRetorno,
+      },
+      inflacao: {
+        real: inflacaoRealYTD,
+        projetado: inflacaoProjetadaYTD,
+        delta: deltaInflacao,
+      },
+    };
+  }, [tracking?.yearSummary, clientData]);
+
   // ✅ EM TRACKING: original = planejado ancorado; adjusted = real ancorado
 const trackingOriginalSeries =
   tracking?.engines?.planejado?.series ||
@@ -928,14 +998,26 @@ const seriesAdjusted = showTracking
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                       <div className="text-sm font-extrabold text-text-primary">
                         Resumo do ano: <span className="text-accent">{tracking.yearSummary.year}</span>
+                        {ytdComparison.hasData && (
+                          <span className="text-text-muted font-normal text-xs ml-2">
+                            ({ytdComparison.monthsCount} {ytdComparison.monthsCount === 1 ? 'mês lançado' : 'meses lançados'})
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs text-text-secondary">
-                        Inflação acumulada no ano:{" "}
-                        <b className="text-text-primary">
-                          {tracking.yearSummary.inflacao?.acumuladaPct != null
-                            ? `${tracking.yearSummary.inflacao.acumuladaPct.toFixed(2)}%`
-                            : "—"}
-                        </b>
+                      <div className="text-xs text-text-secondary flex items-center gap-3">
+                        <span>
+                          Inflação YTD:{" "}
+                          <b className="text-text-primary">
+                            {ytdComparison.hasData
+                              ? formatPercentPtBr(ytdComparison.inflacao.real, { decimals: 2 })
+                              : "—"}
+                          </b>
+                        </span>
+                        {ytdComparison.hasData && (
+                          <span className="text-text-muted">
+                            vs Projetado: <b>{formatPercentPtBr(ytdComparison.inflacao.projetado, { decimals: 2 })}</b>
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -965,24 +1047,95 @@ const seriesAdjusted = showTracking
                         </div>
                       </div>
 
+                      {/* Card Retorno YTD com comparação */}
                       <div className="rounded-xl border border-border bg-background-secondary/40 p-4">
-                        <div className="text-xs text-text-secondary font-bold uppercase">Retorno real (ano)</div>
-                        <div className="mt-3 text-2xl font-display font-extrabold text-text-primary">
-                          {tracking.yearSummary.retorno?.acumuladoPct != null
-                            ? `${tracking.yearSummary.retorno.acumuladoPct.toFixed(2)}%`
-                            : "—"}
+                        <div className="text-xs text-text-secondary font-bold uppercase">
+                          Retorno Real (YTD)
+                          {ytdComparison.hasData && (
+                            <span className="text-text-muted font-normal ml-1">
+                              ({ytdComparison.monthsCount} {ytdComparison.monthsCount === 1 ? 'mês' : 'meses'})
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-text-secondary mt-1">(informado mês a mês)</div>
+                        {ytdComparison.hasData ? (
+                          <div className="mt-2 text-sm space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-text-secondary">Real informado</span>
+                              <span className="font-bold text-lg">
+                                {formatPercentPtBr(ytdComparison.retorno.real, { decimals: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between" title="Retorno projetado após descontar inflação projetada">
+                              <span className="text-text-secondary">
+                                Proj. Real
+                                <span className="text-text-muted text-[10px] ml-1">(líq. inflação)</span>
+                              </span>
+                              <span className="font-semibold text-text-muted">
+                                {formatPercentPtBr(ytdComparison.retorno.projetadoReal, { decimals: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-text-muted" title="Retorno nominal bruto projetado (antes da inflação)">
+                              <span className="text-[11px]">
+                                Proj. Nominal
+                                <span className="text-text-muted text-[10px] ml-1">(bruto)</span>
+                              </span>
+                              <span className="font-medium text-xs">
+                                {formatPercentPtBr(ytdComparison.retorno.projetadoNominal, { decimals: 2 })}
+                              </span>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
+                              <span className="text-text-secondary font-bold">Delta (Real)</span>
+                              <span className={`font-extrabold ${(ytdComparison.retorno.delta ?? 0) >= 0 ? "text-success" : "text-danger"}`}>
+                                {formatDeltaPp(ytdComparison.retorno.delta, { decimals: 2 })}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-text-muted mt-1 leading-tight">
+                              Real = retorno após descontar inflação projetada
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 text-lg font-display font-extrabold text-text-muted" title="Sem lançamentos">
+                            —
+                          </div>
+                        )}
                       </div>
 
+                      {/* Card Inflação YTD com comparação */}
                       <div className="rounded-xl border border-border bg-background-secondary/40 p-4">
-                        <div className="text-xs text-text-secondary font-bold uppercase">Inflação real (ano)</div>
-                        <div className="mt-3 text-2xl font-display font-extrabold text-text-primary">
-                          {tracking.yearSummary.inflacao?.acumuladaPct != null
-                            ? `${tracking.yearSummary.inflacao.acumuladaPct.toFixed(2)}%`
-                            : "—"}
+                        <div className="text-xs text-text-secondary font-bold uppercase">
+                          Inflação (YTD)
+                          {ytdComparison.hasData && (
+                            <span className="text-text-muted font-normal ml-1">
+                              ({ytdComparison.monthsCount} {ytdComparison.monthsCount === 1 ? 'mês' : 'meses'})
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-text-secondary mt-1">(composta mês a mês)</div>
+                        {ytdComparison.hasData ? (
+                          <div className="mt-2 text-sm space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-text-secondary">Real</span>
+                              <span className="font-bold text-lg">
+                                {formatPercentPtBr(ytdComparison.inflacao.real, { decimals: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-text-secondary">Projetado</span>
+                              <span className="font-semibold text-text-muted">
+                                {formatPercentPtBr(ytdComparison.inflacao.projetado, { decimals: 2 })}
+                              </span>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
+                              <span className="text-text-secondary font-bold">Delta</span>
+                              <span className={`font-extrabold ${(ytdComparison.inflacao.delta ?? 0) <= 0 ? "text-success" : "text-danger"}`}>
+                                {formatDeltaPp(ytdComparison.inflacao.delta, { decimals: 2 })}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 text-lg font-display font-extrabold text-text-muted" title="Sem lançamentos">
+                            —
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

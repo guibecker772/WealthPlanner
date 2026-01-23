@@ -610,7 +610,8 @@ export default function AssetsPage() {
           )
         }
       >
-        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+        {/* Lista de ativos - scroll natural da página */}
+        <div className="space-y-4">
           {assets.length === 0 ? (
             <p className="text-text-muted text-sm italic py-4 text-center">
               Nenhum ativo cadastrado.
@@ -861,8 +862,8 @@ export default function AssetsPage() {
         </div>
       </Card>
 
-      {/* Resumo */}
-      <Card title="Resumo da Alocação" className="bg-surface-highlight/20">
+      {/* Resumo - sticky no desktop para acompanhar scroll */}
+      <Card title="Resumo da Alocação" className="bg-surface-highlight/20 lg:sticky lg:top-4">
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">

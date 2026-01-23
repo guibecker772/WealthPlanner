@@ -1,7 +1,7 @@
 // src/components/tracking/MonthlyTrackingCard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import Card from "../ui/Card";
-import { formatCurrencyBR } from "../../utils/format";
+import { formatCurrencyBR, formatMoneyBRL, parsePtBrMoney } from "../../utils/format";
 
 function safeNum(v, fallback = 0) {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -38,9 +38,9 @@ export default function MonthlyTrackingCard({
 
   const [month, setMonth] = useState(1);
 
-  // inputs
-  const [aportePlanejado, setAportePlanejado] = useState("");
-  const [aporteReal, setAporteReal] = useState("");
+  // inputs - agora usam estado local string para formatação visual
+  const [localAportePlanejado, setLocalAportePlanejado] = useState("");
+  const [localAporteReal, setLocalAporteReal] = useState("");
   const [rentabilidadeRealPct, setRentabilidadeRealPct] = useState("");
   const [inflacaoPct, setInflacaoPct] = useState("");
 
@@ -79,8 +79,8 @@ export default function MonthlyTrackingCard({
   }, [selectedYear]);
 
   function clearInputs() {
-    setAportePlanejado("");
-    setAporteReal("");
+    setLocalAportePlanejado("");
+    setLocalAporteReal("");
     setRentabilidadeRealPct("");
     setInflacaoPct("");
   }
@@ -96,8 +96,11 @@ export default function MonthlyTrackingCard({
     if (!found) return;
 
     setMonth(mm);
-    setAportePlanejado(String(found.aportePlanejado ?? ""));
-    setAporteReal(String(found.aporteReal ?? ""));
+    // Formatar valores como BRL visual ao puxar
+    const ap = safeNum(found.aportePlanejado, 0);
+    const ar = safeNum(found.aporteReal, 0);
+    setLocalAportePlanejado(ap > 0 ? formatMoneyBRL(ap) : "");
+    setLocalAporteReal(ar > 0 ? formatMoneyBRL(ar) : "");
     setRentabilidadeRealPct(String(found.rentabilidadeRealPct ?? ""));
     setInflacaoPct(String(found.inflacaoPct ?? ""));
   }
@@ -111,11 +114,12 @@ export default function MonthlyTrackingCard({
     if (!Number.isFinite(y) || y <= 1900) return;
     if (!Number.isFinite(m) || m < 1 || m > 12) return;
 
+    // Parse os valores monetários usando parsePtBrMoney
     const payload = {
       year: y,
       month: m,
-      aportePlanejado: safeNum(aportePlanejado, 0),
-      aporteReal: safeNum(aporteReal, 0),
+      aportePlanejado: parsePtBrMoney(localAportePlanejado, 0),
+      aporteReal: parsePtBrMoney(localAporteReal, 0),
       rentabilidadeRealPct: safeNum(rentabilidadeRealPct, 0),
       inflacaoPct: safeNum(inflacaoPct, 0),
     };
@@ -249,9 +253,18 @@ export default function MonthlyTrackingCard({
         <div>
           <label className="text-xs text-text-secondary font-bold uppercase">Aporte planejado (R$)</label>
           <input
-            value={aportePlanejado}
-            onChange={(e) => setAportePlanejado(e.target.value)}
-            placeholder="Ex: 5000"
+            type="text"
+            inputMode="decimal"
+            value={localAportePlanejado}
+            onChange={(e) => setLocalAportePlanejado(e.target.value)}
+            onBlur={(e) => {
+              const n = parsePtBrMoney(e.target.value, 0);
+              setLocalAportePlanejado(n > 0 ? formatMoneyBRL(n) : "");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.target.blur();
+            }}
+            placeholder="R$ 0,00"
             className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-text-primary outline-none focus:ring-1 focus:ring-accent/40"
           />
         </div>
@@ -259,9 +272,18 @@ export default function MonthlyTrackingCard({
         <div>
           <label className="text-xs text-text-secondary font-bold uppercase">Aporte real (R$)</label>
           <input
-            value={aporteReal}
-            onChange={(e) => setAporteReal(e.target.value)}
-            placeholder="Ex: 10000"
+            type="text"
+            inputMode="decimal"
+            value={localAporteReal}
+            onChange={(e) => setLocalAporteReal(e.target.value)}
+            onBlur={(e) => {
+              const n = parsePtBrMoney(e.target.value, 0);
+              setLocalAporteReal(n > 0 ? formatMoneyBRL(n) : "");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.target.blur();
+            }}
+            placeholder="R$ 0,00"
             className="mt-2 w-full rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold text-text-primary outline-none focus:ring-1 focus:ring-accent/40"
           />
         </div>

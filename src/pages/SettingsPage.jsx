@@ -1,5 +1,5 @@
 // src/pages/SettingsPage.jsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
   ToggleLeft,
@@ -20,7 +20,7 @@ import {
 import SelectField from "../components/SelectField";
 
 import { UF_OPTIONS, getStateRule } from "../constants/stateTaxRules";
-import { formatPercent } from "../utils/format";
+import { formatPercent, formatMoneyBRL, parsePtBrMoney } from "../utils/format";
 
 const PROFILE_OPTIONS = [
   { value: "Conservador", label: "Conservador" },
@@ -119,6 +119,52 @@ export default function SettingsPage() {
     clientData.monthlyCostRetirement !== null &&
     clientData.monthlyCostRetirement !== undefined &&
     Number(clientData.monthlyCostRetirement) > 0;
+
+  // ✅ Estados locais para inputs monetários com formatação BRL visual
+  const [localMonthlyContribution, setLocalMonthlyContribution] = useState('');
+  const [localMonthlyCostRetirement, setLocalMonthlyCostRetirement] = useState('');
+  const [localMonthlyCostCurrent, setLocalMonthlyCostCurrent] = useState('');
+
+  // Sincronizar estados locais quando clientData muda (ex: ao trocar cenário)
+  useEffect(() => {
+    const mc = clientData.monthlyContribution;
+    setLocalMonthlyContribution(
+      mc !== '' && mc !== null && mc !== undefined && Number(mc) > 0
+        ? formatMoneyBRL(Number(mc))
+        : ''
+    );
+  }, [clientData.monthlyContribution]);
+
+  useEffect(() => {
+    const mcr = clientData.monthlyCostRetirement;
+    setLocalMonthlyCostRetirement(
+      mcr !== '' && mcr !== null && mcr !== undefined && Number(mcr) > 0
+        ? formatMoneyBRL(Number(mcr))
+        : ''
+    );
+  }, [clientData.monthlyCostRetirement]);
+
+  useEffect(() => {
+    const mcc = clientData.monthlyCostCurrent;
+    setLocalMonthlyCostCurrent(
+      mcc !== '' && mcc !== null && mcc !== undefined && Number(mcc) > 0
+        ? formatMoneyBRL(Number(mcc))
+        : ''
+    );
+  }, [clientData.monthlyCostCurrent]);
+
+  // Handler para blur/Enter nos inputs monetários
+  const handleMoneyBlur = (field, localValue, setLocalValue, fallbackValue) => {
+    const parsed = parsePtBrMoney(localValue, null);
+    if (parsed !== null && parsed >= 0) {
+      handleUpdate(field, parsed);
+      setLocalValue(parsed > 0 ? formatMoneyBRL(parsed) : '');
+    } else {
+      // Inválido: restaurar do state atual
+      const current = Number(fallbackValue);
+      setLocalValue(current > 0 ? formatMoneyBRL(current) : '');
+    }
+  };
 
   const updateSuccessionCostField = (key, value) => {
     const next = { ...(clientData.successionCosts || {}) };
@@ -258,35 +304,59 @@ export default function SettingsPage() {
           {/* Card: Aportes & Renda */}
           <Card title="Aportes & Renda do Plano" icon={AlertTriangle}>
             <div className="grid grid-cols-1 gap-5 relative z-10">
-              <InputField
-                label="Aporte Mensal Base (R$)"
-                type="number"
-                step="1"
-                value={clientData.monthlyContribution}
-                onChange={(v) => handleNumericChange("monthlyContribution", v)}
-                readOnly={readOnly}
-                placeholder="Ex: 3000"
-              />
+              {/* Aporte Mensal Base - com formatação BRL visual */}
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                  Aporte Mensal Base (R$)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={localMonthlyContribution}
+                  onChange={(e) => setLocalMonthlyContribution(e.target.value)}
+                  onBlur={() => handleMoneyBlur('monthlyContribution', localMonthlyContribution, setLocalMonthlyContribution, clientData.monthlyContribution)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+                  disabled={readOnly}
+                  placeholder="R$ 3.000,00"
+                  className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
+                />
+              </div>
 
-              <InputField
-                label="Renda/Custo desejado na Aposentadoria (R$/mês)"
-                type="number"
-                step="1"
-                value={clientData.monthlyCostRetirement}
-                onChange={(v) => handleNumericChange("monthlyCostRetirement", v)}
-                readOnly={readOnly}
-                placeholder="Ex: 15000"
-              />
+              {/* Renda/Custo desejado na Aposentadoria - com formatação BRL visual */}
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                  Renda/Custo desejado na Aposentadoria (R$/mês)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={localMonthlyCostRetirement}
+                  onChange={(e) => setLocalMonthlyCostRetirement(e.target.value)}
+                  onBlur={() => handleMoneyBlur('monthlyCostRetirement', localMonthlyCostRetirement, setLocalMonthlyCostRetirement, clientData.monthlyCostRetirement)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+                  disabled={readOnly}
+                  placeholder="R$ 15.000,00"
+                  className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
+                />
+              </div>
 
-              <InputField
-                label="Custo de Vida Atual (R$/mês) — opcional"
-                type="number"
-                step="1"
-                value={clientData.monthlyCostCurrent ?? ""}
-                onChange={(v) => handleNumericChange("monthlyCostCurrent", v)}
-                readOnly={readOnly}
-                placeholder="Ex: 12000"
-              />
+              {/* Custo de Vida Atual - com formatação BRL visual */}
+              <div>
+                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                  Custo de Vida Atual (R$/mês) — opcional
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={localMonthlyCostCurrent}
+                  onChange={(e) => setLocalMonthlyCostCurrent(e.target.value)}
+                  onBlur={() => handleMoneyBlur('monthlyCostCurrent', localMonthlyCostCurrent, setLocalMonthlyCostCurrent, clientData.monthlyCostCurrent)}
+                  onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+                  disabled={readOnly}
+                  placeholder="R$ 12.000,00"
+                  className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
+                />
+              </div>
 
               {!readOnly && !hasRetirementIncome && (
                 <div className="mt-2 p-3 bg-danger/10 rounded-lg border border-danger/25 flex gap-3 items-start">
