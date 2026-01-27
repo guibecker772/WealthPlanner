@@ -473,11 +473,26 @@ export default function AssetsPage() {
     updateField("fx", { ...scenarioFx, [key]: Number.isFinite(numVal) && numVal > 0 ? numVal : '' });
   };
 
-  // Calcular totais com conversão FX
+  // Calcular totais com conversão FX (apenas investíveis: financial + previdencia)
   const { totalBRL, byCurrency, percentages, internationalBRL, internationalPct } = useMemo(
     () => calculateFxExposure(assets, scenarioFx),
     [assets, scenarioFx]
   );
+
+  // ✅ Novo: totalPatrimonioBRL = soma de TODOS os ativos convertidos para BRL
+  // Inclui: financial, previdencia, real_estate, vehicle, business, other
+  const totalPatrimonioBRL = useMemo(() => {
+    let total = 0;
+    for (const asset of assets) {
+      const valueBRL = convertToBRL(asset, scenarioFx);
+      if (Number.isFinite(valueBRL)) {
+        total += valueBRL;
+      } else {
+        console.warn(`[AssetsPage] Ativo com valor inválido ignorado:`, asset?.name, asset?.value);
+      }
+    }
+    return total;
+  }, [assets, scenarioFx]);
 
   // Separar ativos por categoria
   const groupedAssets = useMemo(() => {
@@ -857,7 +872,7 @@ export default function AssetsPage() {
             Patrimônio Total (BRL)
           </span>
           <span className="font-display text-3xl font-bold text-text-primary">
-            {formatCurrencyBR(totalBRL)}
+            {formatCurrencyBR(totalPatrimonioBRL)}
           </span>
         </div>
       </Card>
@@ -882,6 +897,11 @@ export default function AssetsPage() {
                 <span className="font-semibold text-sky-400">{formatCurrencyBR(byCurrency.EUR)}</span>
               </div>
             )}
+            {/* ✅ Total Financeiro (BRL) = soma investíveis convertidos */}
+            <div className="flex justify-between text-sm pt-2 mt-2 border-t border-border/50">
+              <span className="text-text-secondary font-medium">Total Financeiro (BRL)</span>
+              <span className="font-bold text-accent">{formatCurrencyBR(totalBRL)}</span>
+            </div>
           </div>
 
           {internationalPct > 0 && (
