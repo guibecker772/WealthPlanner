@@ -1,10 +1,11 @@
 // src/pages/DashboardPage.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
   ComposedChart,
   Area,
   Bar,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -27,6 +28,7 @@ import {
 
 import { CONFIG } from "../constants/config";
 import Card from "../components/ui/Card";
+import { useToast } from "../components/ui/Toast";
 
 import FinancialEngine from "../engine/FinancialEngine";
 import TrackingEngine from "../engine/TrackingEngine";
@@ -43,6 +45,9 @@ import {
 } from "../utils/format";
 
 import MonthlyTrackingCard from "../components/tracking/MonthlyTrackingCard";
+import AlternativeScenariosSection, {
+  useAlternativeScenariosSeries,
+} from "../components/scenarios/AlternativeScenariosSection";
 
 // -------------------------
 // Helpers
@@ -86,43 +91,64 @@ function safeNum(v, fallback = 0) {
 }
 
 // -------------------------
-// Tooltip custom
+// Tooltip custom - Mostra todas as séries comparativas
 // -------------------------
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
 
-  const original = payload.find((p) => p.dataKey === "wealthOriginal");
-  const adjusted = payload.find((p) => p.dataKey === "wealthAdjusted");
+  // Séries principais com cores customizadas
+  const seriesConfig = {
+    wealthOriginal: { label: "Plano original", color: "#D4AF37", order: 1 },
+    wealthAdjusted: { label: "Plano atualizado", color: "#60a5fa", order: 2 },
+    wealthConsumption: { label: "Consumo Total", color: "#f59e0b", order: 3 },
+    wealthPreservation: { label: "Preservação", color: "#10b981", order: 4 },
+  };
+
+  // Filtra e ordena as séries de patrimônio (exclui chartCashIn para exibir separadamente)
+  const wealthSeries = payload
+    .filter((p) => p.dataKey !== "chartCashIn" && seriesConfig[p.dataKey])
+    .sort((a, b) => (seriesConfig[a.dataKey]?.order || 99) - (seriesConfig[b.dataKey]?.order || 99));
+
   const cashIn = payload.find((p) => p.dataKey === "chartCashIn");
 
   return (
     <div className="bg-surface-highlight/95 border border-accent/20 p-4 rounded-xl shadow-glass backdrop-blur-md relative z-50 min-w-[220px]">
-      <p className="text-text-secondary text-sm mb-2 font-medium">Aos {label} anos</p>
+      <p className="text-text-secondary text-sm mb-3 font-medium">Aos {label} anos</p>
 
-      {original && (
-        <div className="mb-2">
-          <p className="text-xs text-text-secondary font-semibold">Plano original</p>
-          <p className="text-lg font-display font-bold text-text-primary leading-none">
-            {formatCurrencyBR(original.value || 0)}
-          </p>
-        </div>
-      )}
+      {/* Séries de patrimônio */}
+      <div className="space-y-2">
+        {wealthSeries.map((series) => {
+          const config = seriesConfig[series.dataKey];
+          const value = series.value;
+          
+          return (
+            <div key={series.dataKey} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span 
+                  className="w-3 h-[3px] rounded-full" 
+                  style={{ backgroundColor: config?.color || series.stroke || "#D4AF37" }}
+                />
+                <span className="text-xs text-text-secondary font-medium">
+                  {config?.label || series.name || series.dataKey}
+                </span>
+              </div>
+              <span className="text-sm font-display font-bold text-text-primary">
+                {value != null && Number.isFinite(value) ? formatCurrencyBR(value) : "—"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
 
-      {adjusted && (
-        <div className="mb-2">
-          <p className="text-xs text-text-secondary font-semibold">Plano atualizado</p>
-          <p className="text-lg font-display font-bold text-text-primary leading-none">
-            {formatCurrencyBR(adjusted.value || 0)}
-          </p>
-        </div>
-      )}
-
+      {/* Aporte extraordinário */}
       {cashIn && cashIn.value > 0 && (
         <div className="mt-3 pt-3 border-t border-border">
-          <p className="text-lg font-display font-bold text-success leading-none flex items-center gap-1">
-            + {formatCurrencyBR(cashIn.value)}
-          </p>
-          <p className="text-xs text-success/80 mt-1 font-medium">Aporte extraordinário</p>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-xs text-success font-medium">Aporte extraordinário</span>
+            <span className="text-sm font-display font-bold text-success">
+              + {formatCurrencyBR(cashIn.value)}
+            </span>
+          </div>
         </div>
       )}
     </div>
@@ -132,6 +158,16 @@ const CustomTooltip = ({ active, payload, label }) => {
 // -------------------------
 // Legenda/Guia
 // -------------------------
+
+// Swatch components for legend (declared outside to avoid recreation during render)
+const LineSwatch = ({ className, style }) => (
+  <span className={`inline-block w-8 h-[3px] rounded-full ${className || ""}`} style={style} />
+);
+
+const DotSwatch = ({ className }) => (
+  <span className={`inline-block w-3 h-3 rounded-full ${className}`} />
+);
+
 function ChartLegendFooter({
   showAdjusted,
   hasCashIn,
@@ -139,15 +175,8 @@ function ChartLegendFooter({
   contributionEndAge,
   goals = [],
   timelineRules = [],
+  extraSeries = [],
 }) {
-  const LineSwatch = ({ className }) => (
-    <span className={`inline-block w-8 h-[3px] rounded-full ${className}`} />
-  );
-
-  const DotSwatch = ({ className }) => (
-    <span className={`inline-block w-3 h-3 rounded-full ${className}`} />
-  );
-
   return (
     <div className="mt-4 space-y-3">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-semibold text-text-secondary">
@@ -162,6 +191,19 @@ function ChartLegendFooter({
             <span>Plano atualizado</span>
           </div>
         )}
+
+        {/* Séries extras (cenários alternativos) */}
+        {extraSeries.map((extra) => (
+          <div key={extra.key} className="flex items-center gap-2">
+            <LineSwatch 
+              style={{ 
+                backgroundColor: extra.color,
+                backgroundImage: extra.strokeDasharray ? `repeating-linear-gradient(90deg, ${extra.color} 0, ${extra.color} 4px, transparent 4px, transparent 8px)` : undefined,
+              }} 
+            />
+            <span>{extra.name}</span>
+          </div>
+        ))}
 
         {hasCashIn && (
           <div className="flex items-center gap-2">
@@ -284,7 +326,7 @@ function readContributionRules(clientData) {
 // -------------------------
 // Gráfico
 // -------------------------
-function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted }) {
+function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted, extraSeries = [] }) {
   const allGoals = (clientData?.financialGoals || []).filter((g) => (g?.value || 0) > 0);
 
   const nowAge = Number(clientData?.currentAge ?? clientData?.idadeAtual);
@@ -328,13 +370,24 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
       byAge.set(age, { ...prev, wealthAdjusted: p?.financial ?? p?.wealth ?? 0 });
     });
 
+    // Adiciona séries extras (cenários alternativos)
+    extraSeries.forEach((extra) => {
+      if (!extra?.data) return;
+      extra.data.forEach((p) => {
+        const age = Number(p?.age);
+        if (!Number.isFinite(age)) return;
+        const prev = byAge.get(age) || { age };
+        byAge.set(age, { ...prev, [extra.key]: p?.financial ?? p?.wealth ?? 0 });
+      });
+    });
+
     const merged = Array.from(byAge.values()).sort((x, y) => x.age - y.age);
 
     return merged.map((point) => ({
       ...point,
       chartCashIn: cashInMap[String(point.age)] || null,
     }));
-  }, [seriesOriginal, seriesAdjusted, cashInMap]);
+  }, [seriesOriginal, seriesAdjusted, cashInMap, extraSeries]);
 
   if (!chartData.length) {
     return (
@@ -347,7 +400,15 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
   const maxCashIn = Math.max(0, ...Object.values(cashInMap));
   const maxO = Math.max(...chartData.map((d) => d.wealthOriginal || 0), 0);
   const maxA = Math.max(...chartData.map((d) => d.wealthAdjusted || 0), 0);
-  const yDomainMax = Math.max(maxCashIn, maxO, maxA) * 1.1;
+  
+  // Inclui séries extras no cálculo do domínio Y
+  let maxExtra = 0;
+  extraSeries.forEach((extra) => {
+    const maxE = Math.max(...chartData.map((d) => d[extra.key] || 0), 0);
+    maxExtra = Math.max(maxExtra, maxE);
+  });
+  
+  const yDomainMax = Math.max(maxCashIn, maxO, maxA, maxExtra) * 1.1;
 
   const accentColor = "#D4AF37";
   const adjustedColor = "#60a5fa";
@@ -467,6 +528,21 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
               />
             )}
 
+            {/* Linhas extras para cenários alternativos */}
+            {extraSeries.map((extra) => (
+              <Line
+                key={extra.key}
+                type="monotone"
+                dataKey={extra.key}
+                name={extra.name}
+                stroke={extra.color}
+                strokeWidth={2}
+                strokeDasharray={extra.strokeDasharray || "0"}
+                dot={false}
+                activeDot={{ r: 5, stroke: extra.color, strokeWidth: 2, fill: "#0A0C14" }}
+              />
+            ))}
+
             <ReferenceLine
               x={retirementAge}
               stroke={successColor}
@@ -541,6 +617,7 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
         contributionEndAge={contributionEndAge}
         goals={allGoals}
         timelineRules={timelineRules}
+        extraSeries={extraSeries}
       />
     </div>
   );
@@ -583,21 +660,73 @@ export default function DashboardPage() {
     analysis,
     isStressTest,
     viewMode,
-    aiEnabled,
+    // aiEnabled - reserved for future AI features
     scenarioId = null,
     trackingByScenario = null,
     setTrackingByScenario = null,
+    updateField = null,
   } = ctx;
 
-  if (!clientData) {
-    return (
-      <div className="p-6 rounded-2xl border border-border bg-surface/40 text-text-secondary">
-        Dados do cenário indisponíveis no momento.
-      </div>
-    );
-  }
+  // Toast hook - must be called unconditionally
+  const { showToast } = useToast();
+
+  // All hooks must be called before any conditional returns
   const [mode, setMode] = useState("simulation");
   const [selectedYear, setSelectedYear] = useState(null);
+  
+  // Estado para visibilidade dos cenários alternativos no gráfico
+  const [alternativeChartVisibility, setAlternativeChartVisibility] = useState({
+    consumption: false,
+    preservation: false,
+  });
+
+  // Hook para calcular séries extras dos cenários alternativos (uses clientData safely)
+  const { extraSeries: alternativeExtraSeries } = useAlternativeScenariosSeries(
+    clientData || {},
+    alternativeChartVisibility
+  );
+
+  // Handler para toggle de visibilidade no gráfico
+  const handleToggleChartVisibility = useCallback((modeKey, visible) => {
+    setAlternativeChartVisibility((prev) => ({
+      ...prev,
+      [modeKey]: visible,
+    }));
+  }, []);
+
+  // Handler para aplicar cenário alternativo
+  const handleApplyAlternativeScenario = useCallback((config) => {
+    const { mode: scenarioMode, modeLabel, requiredContribution, requiredRetirementAge, showOnChart } = config;
+    
+    // Nome do cenário a criar/atualizar
+    const scenarioName = scenarioMode === "consumption"
+      ? "Carteira Planejada (Consumo Total)"
+      : "Carteira Planejada (Preservação)";
+
+    // Atualiza os campos do cenário atual usando updateField
+    if (updateField) {
+      updateField("monthlyContribution", requiredContribution);
+      updateField("retirementAge", requiredRetirementAge);
+      updateField("contributionEndAge", requiredRetirementAge);
+      updateField("scenarioName", scenarioName);
+    }
+
+    // Se showOnChart, ativa a visualização
+    if (showOnChart) {
+      setAlternativeChartVisibility((prev) => ({
+        ...prev,
+        [scenarioMode]: true,
+      }));
+    }
+
+    // Feedback
+    showToast({
+      type: "success",
+      title: "Cenário aplicado com sucesso",
+      message: `${modeLabel} - Aporte: ${formatCurrencyBR(requiredContribution)}/mês, Aposentadoria: ${requiredRetirementAge} anos`,
+      duration: 5000,
+    });
+  }, [updateField, showToast]);
 
   const engineOutput = useMemo(() => {
     if (analysis) return analysis;
@@ -730,16 +859,16 @@ const baseKpis = engineOutput?.kpis || {};
   }, [tracking?.yearSummary, clientData]);
 
   // ✅ EM TRACKING: original = planejado ancorado; adjusted = real ancorado
-const trackingOriginalSeries =
-  tracking?.engines?.planejado?.series ||
-  tracking?.engines?.original?.series ||
-  tracking?.engines?.baseline?.series ||
-  [];
-
-const trackingAdjustedSeries =
-  tracking?.engines?.ajustado?.series ||
-  tracking?.engines?.updated?.series ||
-  [];
+  // Note: trackingOriginalSeries and trackingAdjustedSeries are preserved for future use
+  // const trackingOriginalSeries =
+  //   tracking?.engines?.planejado?.series ||
+  //   tracking?.engines?.original?.series ||
+  //   tracking?.engines?.baseline?.series ||
+  //   [];
+  // const trackingAdjustedSeries =
+  //   tracking?.engines?.ajustado?.series ||
+  //   tracking?.engines?.updated?.series ||
+  //   [];
 
 const seriesOriginal = showTracking
   ? tracking?.engines?.original?.series || tracking?.engines?.planejado?.series || engineOutput?.series || []
@@ -1151,8 +1280,20 @@ const seriesAdjusted = showTracking
             seriesAdjusted={seriesAdjusted}
             clientData={clientData}
             showAdjusted={showTracking}
+            extraSeries={showTracking ? [] : alternativeExtraSeries}
           />
         </Card>
+
+        {/* Seção de Cenários Alternativos - apenas na aba Simulação */}
+        {!showTracking && (
+          <AlternativeScenariosSection
+            clientData={clientData}
+            onApplyScenario={handleApplyAlternativeScenario}
+            chartVisibility={alternativeChartVisibility}
+            onToggleChartVisibility={handleToggleChartVisibility}
+            showToast={showToast}
+          />
+        )}
       </div>
     </div>
   );
