@@ -1,5 +1,5 @@
 // src/components/scenarios/AlternativeScenariosSection.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   TrendingUp,
   Shield,
@@ -9,6 +9,9 @@ import {
   Sparkles,
   AlertTriangle,
   ChevronRight,
+  ToggleLeft,
+  ToggleRight,
+  Target,
 } from "lucide-react";
 import ApplyScenarioModal from "./ApplyScenarioModal";
 import { calculateAlternativeScenarios } from "../../utils/simulationModes";
@@ -231,6 +234,8 @@ export default function AlternativeScenariosSection({
   onApplyScenario,
   chartVisibility = {},
   onToggleChartVisibility,
+  includeImpacts = false,
+  onToggleIncludeImpacts,
   // showToast - reserved for future inline notifications
 }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -239,8 +244,8 @@ export default function AlternativeScenariosSection({
   // Calcula os cenários alternativos
   const scenarios = useMemo(() => {
     if (!clientData) return { consumption: null, preservation: null };
-    return calculateAlternativeScenarios(clientData);
-  }, [clientData]);
+    return calculateAlternativeScenarios(clientData, { includeImpacts });
+  }, [clientData, includeImpacts]);
 
   const desiredMonthlyIncome = toNumber(
     clientData?.monthlyCostRetirement ??
@@ -305,7 +310,7 @@ export default function AlternativeScenariosSection({
       <div className="rounded-2xl border border-border bg-surface overflow-hidden">
         {/* Header da seção */}
         <div className="px-6 py-5 border-b border-border/50 bg-gradient-to-r from-surface-highlight/50 to-transparent">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-accent/10">
                 <Sparkles size={20} className="text-accent" />
@@ -319,9 +324,34 @@ export default function AlternativeScenariosSection({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-xs text-text-muted">
-              <span>Powered by</span>
-              <span className="font-bold text-accent">WealthPlanner</span>
+            {/* Toggle "Considerar Metas e Cenários" */}
+            <div className="flex items-center gap-3">
+              <Tooltip
+                content={
+                  includeImpacts
+                    ? "ON: Os cenários consideram suas metas, aportes extras e eventos de cash-in, igual ao Plano Original."
+                    : "OFF: Os cenários usam projeção simplificada, sem metas nem eventos extras."
+                }
+              >
+                <button
+                  onClick={onToggleIncludeImpacts}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${
+                    includeImpacts
+                      ? "border-accent/50 bg-accent/10 text-accent"
+                      : "border-border bg-surface-highlight/50 text-text-secondary hover:border-border/80"
+                  }`}
+                >
+                  <Target size={14} className={includeImpacts ? "text-accent" : "text-text-muted"} />
+                  <span className="text-xs font-medium whitespace-nowrap">
+                    Metas e Cenários
+                  </span>
+                  {includeImpacts ? (
+                    <ToggleRight size={18} className="text-accent" />
+                  ) : (
+                    <ToggleLeft size={18} className="text-text-muted" />
+                  )}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -392,11 +422,11 @@ export default function AlternativeScenariosSection({
 /**
  * Hook para gerenciar as séries extras do gráfico (cenários alternativos)
  */
-export function useAlternativeScenariosSeries(clientData, chartVisibility) {
+export function useAlternativeScenariosSeries(clientData, chartVisibility, includeImpacts = false) {
   const scenarios = useMemo(() => {
     if (!clientData) return { consumption: null, preservation: null };
-    return calculateAlternativeScenarios(clientData);
-  }, [clientData]);
+    return calculateAlternativeScenarios(clientData, { includeImpacts });
+  }, [clientData, includeImpacts]);
 
   const extraSeries = useMemo(() => {
     const series = [];

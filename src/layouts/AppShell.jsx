@@ -17,7 +17,10 @@ import {
   Settings as SettingsIcon,
   Shield,
   PieChart,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import { useToast } from "../components/ui/Toast";
 
 import FinancialEngine from "../engine/FinancialEngine";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -483,11 +486,66 @@ function MainSidebar({ viewMode, logout }) {
   );
 }
 
+/**
+ * Gera um label genérico para a simulação ativa sem expor PII
+ */
+function getActiveLabel(index, scenarioName) {
+  const match = scenarioName?.match(/Cen[aá]rio\s*(\d+)/i);
+  if (match) return `Cenário ${match[1]}`;
+  return `Cenário ${index + 1}`;
+}
+
 function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDelete, onSave, onRename, readOnly }) {
+  const { showToast } = useToast();
+  
+  // Estado de privacidade - default OFF, sem persistência (reset a cada refresh)
+  const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+  
+  const activeIndex = useMemo(() => simulations.findIndex((s) => s.id === activeSimId), [simulations, activeSimId]);
+  const activeSim = useMemo(() => simulations.find((s) => s.id === activeSimId), [simulations, activeSimId]);
+  const activeGenericLabel = useMemo(() => {
+    if (!activeSim) return "Simulação ativa";
+    return getActiveLabel(activeIndex, activeSim.scenarioName || activeSim.name);
+  }, [activeSim, activeIndex]);
+
+  // Handler para toggle de privacidade
+  const handleTogglePrivacy = () => setIsPrivacyMode((prev) => !prev);
+
+  // Handler para seleção com bloqueio quando privacidade ON
+  const handleSelect = (simId) => {
+    if (isPrivacyMode && simId !== activeSimId) {
+      showToast({
+        type: "warning",
+        title: "Modo Privacidade Ativo",
+        message: "Desative o modo privacidade para trocar de simulação.",
+        duration: 3500,
+      });
+      return;
+    }
+    onSelect(simId);
+  };
+
   return (
     <div className="w-80 shrink-0 bg-background-secondary/80 border-l border-border backdrop-blur-md p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-display font-semibold text-text-primary">Simulações</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-display font-semibold text-text-primary">Simulações</h3>
+          {/* Toggle de Privacidade */}
+          <button
+            onClick={handleTogglePrivacy}
+            aria-pressed={isPrivacyMode}
+            aria-label={isPrivacyMode ? "Desativar modo privacidade" : "Ativar modo privacidade"}
+            title={isPrivacyMode ? "Desativar modo privacidade" : "Ativar modo privacidade"}
+            className={`p-1.5 rounded-lg transition-all flex items-center gap-1 ${
+              isPrivacyMode
+                ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                : "text-text-secondary hover:text-text-primary hover:bg-surface-highlight"
+            }`}
+          >
+            {isPrivacyMode ? <EyeOff size={16} /> : <Eye size={16} />}
+            {isPrivacyMode && <span className="text-xs font-bold">ON</span>}
+          </button>
+        </div>
 
         <button
           onClick={onCreate}
@@ -505,27 +563,45 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
       </div>
 
       <div className="space-y-2 max-h-[55vh] overflow-y-auto no-scrollbar pr-1">
-        {simulations.map((s) => {
+        {simulations.map((s, idx) => {
           const active = s.id === activeSimId;
+          
+          // MODO PRIVACIDADE: não renderizar dados sensíveis no DOM
+          const displayName = isPrivacyMode
+            ? (active ? activeGenericLabel : "Cliente ••••")
+            : (s.name || "Sem nome");
+          
+          const displayDate = isPrivacyMode
+            ? "—"
+            : (s.updatedAt ? new Date(s.updatedAt).toLocaleString() : "—");
+
           return (
             <button
               key={s.id}
-              onClick={() => onSelect(s.id)}
+              onClick={() => handleSelect(s.id)}
+              disabled={isPrivacyMode && !active}
               className={`w-full text-left p-4 rounded-2xl border transition-all ${
-                active ? "border-accent/40 bg-accent-subtle/20" : "border-border bg-surface/30 hover:bg-surface-highlight"
+                active 
+                  ? "border-accent/40 bg-accent-subtle/20" 
+                  : isPrivacyMode
+                    ? "border-border bg-surface/20 opacity-50 cursor-not-allowed"
+                    : "border-border bg-surface/30 hover:bg-surface-highlight"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className={`text-sm font-semibold truncate ${active ? "text-accent" : "text-text-primary"}`}>
-                    {s.name || "Sem nome"}
+                    {displayName}
                   </div>
                   <div className="text-xs text-text-secondary mt-1">
-                    {s.updatedAt ? `Atualizado: ${new Date(s.updatedAt).toLocaleString()}` : "—"}
+                    Atualizado: {displayDate}
                   </div>
                 </div>
                 {active && (
                   <span className="text-[11px] px-2 py-1 rounded-full bg-accent/15 text-accent font-bold">ATIVO</span>
+                )}
+                {isPrivacyMode && !active && (
+                  <Shield size={14} className="text-text-secondary opacity-50" />
                 )}
               </div>
             </button>

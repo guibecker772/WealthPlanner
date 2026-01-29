@@ -71,6 +71,33 @@ function normalizeRate(x, fallback = 0) {
 // ========================================
 
 /**
+ * Helper: normaliza regra de contributionTimeline
+ */
+function normalizeTimelineRule(rule) {
+  if (!rule) return null;
+  return {
+    startAge: toNumber(rule.startAge ?? rule.idadeInicio ?? 0, 0),
+    endAge: toNumber(rule.endAge ?? rule.idadeFim ?? 999, 999),
+    amount: toNumber(rule.amount ?? rule.valor ?? 0, 0),
+    enabled: rule.enabled !== false,
+  };
+}
+
+/**
+ * Helper: resolve aporte mensal considerando timeline
+ */
+function getMonthlyContributionAtAge(age, baseMonthly, timeline = []) {
+  // Procura regra ativa para a idade
+  for (const rule of timeline) {
+    if (!rule || rule.enabled === false) continue;
+    if (age >= rule.startAge && age < rule.endAge) {
+      return toNumber(rule.amount, baseMonthly);
+    }
+  }
+  return baseMonthly;
+}
+
+/**
  * Simula a evolução do patrimônio com os parâmetros fornecidos.
  * Retorna o patrimônio final e a série de projeção.
  * 
@@ -83,6 +110,9 @@ function normalizeRate(x, fallback = 0) {
  * @param {number} params.lifeExpectancy - Expectativa de vida
  * @param {number} params.desiredMonthlyIncome - Renda mensal desejada na aposentadoria
  * @param {number} params.realReturn - Taxa de retorno real anual (decimal)
+ * @param {Array} params.cashInEvents - (opcional) Eventos de entrada de caixa [{age, value}]
+ * @param {Array} params.impactGoals - (opcional) Metas de impacto [{age, value}]
+ * @param {Array} params.contributionTimeline - (opcional) Timeline de aportes [{startAge, endAge, amount}]
  * @returns {object} { finalWealth, wealthAtRetirement, series }
  */
 function simulateWealth({
@@ -94,6 +124,10 @@ function simulateWealth({
   lifeExpectancy,
   desiredMonthlyIncome,
   realReturn,
+  // Parâmetros opcionais para incluir impactos (igual ao FinancialEngine)
+  cashInEvents = [],
+  impactGoals = [],
+  contributionTimeline = [],
 }) {
   const monthlyRate = annualToMonthlyRate(realReturn);
   const startAge = Math.max(0, Math.min(120, currentAge));
@@ -101,18 +135,39 @@ function simulateWealth({
   const retAge = Math.max(startAge, Math.min(endAge, retirementAge));
   const contribEnd = Math.max(startAge, Math.min(endAge, contributionEndAge ?? retAge));
 
+  // Prepara maps para cash-in e goals por idade
+  const cashInByAge = new Map();
+  for (const ev of cashInEvents) {
+    if (ev?.age > 0 && ev?.value > 0) {
+      cashInByAge.set(ev.age, (cashInByAge.get(ev.age) || 0) + ev.value);
+    }
+  }
+
+  const goalsByAge = new Map();
+  for (const g of impactGoals) {
+    if (g?.age > 0 && g?.value > 0) {
+      goalsByAge.set(g.age, (goalsByAge.get(g.age) || 0) + g.value);
+    }
+  }
+
+  // Normaliza timeline
+  const timeline = contributionTimeline.map(normalizeTimelineRule).filter((r) => r && r.enabled !== false);
+
   let wealth = toNumber(initialWealth, 0);
   const series = [];
   let wealthAtRetirement = wealth;
   let zeroedAtAge = null; // Track when wealth first hit zero
 
   for (let age = startAge; age < endAge; age++) {
-    const baseContrib = age < contribEnd ? monthlyContribution : 0;
+    const baseForThisAge = age < contribEnd ? monthlyContribution : 0;
 
     // 12 meses dentro do ano
     for (let m = 1; m <= 12; m++) {
-      // Aporte do mês
-      wealth += toNumber(baseContrib, 0);
+      // Aporte do mês (considerando timeline se houver)
+      const monthlyContrib = timeline.length > 0
+        ? getMonthlyContributionAtAge(age, baseForThisAge, timeline)
+        : baseForThisAge;
+      wealth += toNumber(monthlyContrib, 0);
 
       // Retorno do mês
       wealth *= 1 + monthlyRate;
@@ -130,6 +185,13 @@ function simulateWealth({
     }
 
     const nextAge = age + 1;
+
+    // Eventos no "aniversário" (nextAge) - igual ao FinancialEngine
+    const cashIn = cashInByAge.get(nextAge) || 0;
+    if (cashIn > 0) wealth += cashIn;
+
+    const goalsAtAge = goalsByAge.get(nextAge) || 0;
+    if (goalsAtAge > 0) wealth = Math.max(0, wealth - goalsAtAge);
 
     // Captura patrimônio na aposentadoria
     if (nextAge === retAge) {
@@ -178,6 +240,10 @@ function evaluateConsumptionMode({
   lifeExpectancy,
   desiredMonthlyIncome,
   realReturn,
+  // Impacts opcionais
+  cashInEvents = [],
+  impactGoals = [],
+  contributionTimeline = [],
 }) {
   const result = simulateWealth({
     initialWealth,
@@ -188,6 +254,9 @@ function evaluateConsumptionMode({
     lifeExpectancy,
     desiredMonthlyIncome,
     realReturn,
+    cashInEvents,
+    impactGoals,
+    contributionTimeline,
   });
 
   const { finalWealth, zeroedAtAge } = result;
@@ -229,6 +298,10 @@ function evaluatePreservationMode({
   lifeExpectancy,
   desiredMonthlyIncome,
   realReturn,
+  // Impacts opcionais
+  cashInEvents = [],
+  impactGoals = [],
+  contributionTimeline = [],
 }) {
   const { finalWealth, wealthAtRetirement } = simulateWealth({
     initialWealth,
@@ -239,6 +312,9 @@ function evaluatePreservationMode({
     lifeExpectancy,
     desiredMonthlyIncome,
     realReturn,
+    cashInEvents,
+    impactGoals,
+    contributionTimeline,
   });
 
   // Objetivo: finalWealth >= wealthAtRetirement * 0.95 (preservação com tolerância)
@@ -259,9 +335,12 @@ function evaluatePreservationMode({
  * @param {'consumption' | 'preservation'} params.mode
  * @param {object} params.inputs - Dados do cliente
  * @param {number} params.targetRetirementAge - Idade de aposentadoria desejada
+ * @param {object} params.impacts - (opcional) { cashInEvents, impactGoals, contributionTimeline }
  * @returns {object} { requiredMonthlyContribution, status, explain }
  */
-export function solveRequiredContribution({ mode, inputs, targetRetirementAge }) {
+export function solveRequiredContribution({ mode, inputs, targetRetirementAge, impacts = {} }) {
+  const { cashInEvents = [], impactGoals = [], contributionTimeline = [] } = impacts;
+  
   const currentAge = toNumber(inputs.currentAge, 30);
   const retirementAge = toNumber(targetRetirementAge ?? inputs.retirementAge, 60);
   const contributionEndAge = toNumber(inputs.contributionEndAge ?? retirementAge, retirementAge);
@@ -305,6 +384,10 @@ export function solveRequiredContribution({ mode, inputs, targetRetirementAge })
       lifeExpectancy,
       desiredMonthlyIncome,
       realReturn,
+      // Passa impactos se houver
+      cashInEvents,
+      impactGoals,
+      contributionTimeline,
     };
     
     if (mode === MODES.CONSUMPTION) {
@@ -454,9 +537,12 @@ export function solveRequiredContribution({ mode, inputs, targetRetirementAge })
  * @param {'consumption' | 'preservation'} params.mode
  * @param {object} params.inputs - Dados do cliente
  * @param {number} params.fixedMonthlyContribution - Aporte mensal fixo
+ * @param {object} params.impacts - (opcional) { cashInEvents, impactGoals, contributionTimeline }
  * @returns {object} { requiredRetirementAge, status, explain }
  */
-export function solveRetirementAge({ mode, inputs, fixedMonthlyContribution }) {
+export function solveRetirementAge({ mode, inputs, fixedMonthlyContribution, impacts = {} }) {
+  const { cashInEvents = [], impactGoals = [], contributionTimeline = [] } = impacts;
+  
   const currentAge = toNumber(inputs.currentAge, 30);
   const lifeExpectancy = toNumber(inputs.lifeExpectancy ?? inputs.maxAge, 90);
   const desiredMonthlyIncome = toNumber(
@@ -498,6 +584,10 @@ export function solveRetirementAge({ mode, inputs, fixedMonthlyContribution }) {
       lifeExpectancy,
       desiredMonthlyIncome,
       realReturn,
+      // Passa impactos se houver
+      cashInEvents,
+      impactGoals,
+      contributionTimeline,
     };
     
     if (mode === MODES.CONSUMPTION) {
@@ -608,9 +698,12 @@ export function solveRetirementAge({ mode, inputs, fixedMonthlyContribution }) {
  * @param {object} params.inputs - Dados do cliente
  * @param {number} params.monthlyContribution - Aporte mensal a usar
  * @param {number} params.retirementAge - Idade de aposentadoria a usar
+ * @param {object} params.impacts - (opcional) { cashInEvents, impactGoals, contributionTimeline }
  * @returns {object} { series, finalWealth, wealthAtRetirement }
  */
-export function simulateMode({ mode, inputs, monthlyContribution, retirementAge }) {
+export function simulateMode({ mode, inputs, monthlyContribution, retirementAge, impacts = {} }) {
+  const { cashInEvents = [], impactGoals = [], contributionTimeline = [] } = impacts;
+  
   const currentAge = toNumber(inputs.currentAge, 30);
   const retAge = toNumber(retirementAge ?? inputs.retirementAge, 60);
   const contributionEndAge = toNumber(inputs.contributionEndAge ?? retAge, retAge);
@@ -646,6 +739,10 @@ export function simulateMode({ mode, inputs, monthlyContribution, retirementAge 
     lifeExpectancy,
     desiredMonthlyIncome,
     realReturn,
+    // Passa impactos se houver
+    cashInEvents,
+    impactGoals,
+    contributionTimeline,
   });
 
   return {
@@ -667,13 +764,62 @@ export function simulateMode({ mode, inputs, monthlyContribution, retirementAge 
 // ========================================
 
 /**
+ * Extrai e normaliza os eventos de impacto do clientData.
+ * Reutiliza lógica similar ao FinancialEngine.js
+ */
+function extractImpactsFromClientData(clientData) {
+  if (!clientData) return { cashInEvents: [], impactGoals: [], contributionTimeline: [] };
+
+  // Cash-in events
+  const cashInEventsRaw = Array.isArray(clientData.cashInEvents) ? clientData.cashInEvents : [];
+  const cashInEvents = cashInEventsRaw
+    .filter((e) => e?.enabled !== false)
+    .map((e) => ({
+      age: toNumber(e.age ?? e.naIdade ?? e.idade, 0),
+      value: toNumber(e.value ?? e.valor ?? 0, 0),
+      type: normalizeText(e.type || "financial"),
+    }))
+    .filter((e) => e.age > 0 && e.value > 0);
+
+  // Impact goals
+  const goalsRaw = Array.isArray(clientData.financialGoals) ? clientData.financialGoals : [];
+  const impactGoals = goalsRaw
+    .filter((g) => (g?.type || "impact") === "impact" || normalizeText(g?.type).includes("impact"))
+    .map((g) => ({
+      id: g.id ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      age: toNumber(g.age ?? g.naIdade ?? g.idade, 0),
+      value: toNumber(g.value ?? g.valor ?? 0, 0),
+      name: g.name ?? g.titulo ?? "Meta",
+    }))
+    .filter((g) => g.age > 0 && g.value > 0);
+
+  // Contribution timeline
+  const rawTimeline =
+    (Array.isArray(clientData.contributionTimeline) && clientData.contributionTimeline) ||
+    (Array.isArray(clientData.contributionRanges) && clientData.contributionRanges) ||
+    [];
+  const contributionTimeline = rawTimeline
+    .map(normalizeTimelineRule)
+    .filter((r) => r && r.enabled !== false);
+
+  return { cashInEvents, impactGoals, contributionTimeline };
+}
+
+/**
  * Calcula os resultados de ambos os modos de simulação.
  * 
  * @param {object} clientData - Dados do cliente
+ * @param {object} options - Opções de cálculo
+ * @param {boolean} options.includeImpacts - Se true, considera metas, cash-in events e timeline de aportes
  * @returns {object} { consumption: {...}, preservation: {...} }
  */
-export function calculateAlternativeScenarios(clientData) {
+export function calculateAlternativeScenarios(clientData, options = {}) {
   if (!clientData) return { consumption: null, preservation: null };
+
+  const { includeImpacts = false } = options;
+
+  // Extrai impactos do clientData se includeImpacts = true
+  const impacts = includeImpacts ? extractImpactsFromClientData(clientData) : {};
 
   const currentRetirementAge = toNumber(clientData.retirementAge, 60);
   const currentContribution = toNumber(clientData.monthlyContribution, 5000);
@@ -683,12 +829,14 @@ export function calculateAlternativeScenarios(clientData) {
     mode: MODES.CONSUMPTION,
     inputs: clientData,
     targetRetirementAge: currentRetirementAge,
+    impacts,
   });
 
   const consumptionAge = solveRetirementAge({
     mode: MODES.CONSUMPTION,
     inputs: clientData,
     fixedMonthlyContribution: currentContribution,
+    impacts,
   });
 
   let consumptionSeries = null;
@@ -698,6 +846,7 @@ export function calculateAlternativeScenarios(clientData) {
       inputs: clientData,
       monthlyContribution: consumptionContrib.requiredMonthlyContribution,
       retirementAge: currentRetirementAge,
+      impacts,
     });
   }
 
@@ -706,12 +855,14 @@ export function calculateAlternativeScenarios(clientData) {
     mode: MODES.PRESERVATION,
     inputs: clientData,
     targetRetirementAge: currentRetirementAge,
+    impacts,
   });
 
   const preservationAge = solveRetirementAge({
     mode: MODES.PRESERVATION,
     inputs: clientData,
     fixedMonthlyContribution: currentContribution,
+    impacts,
   });
 
   let preservationSeries = null;
@@ -721,6 +872,7 @@ export function calculateAlternativeScenarios(clientData) {
       inputs: clientData,
       monthlyContribution: preservationContrib.requiredMonthlyContribution,
       retirementAge: currentRetirementAge,
+      impacts,
     });
   }
 

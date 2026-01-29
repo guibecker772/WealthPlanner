@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   LineChart,
   Calendar,
+  FileText,
 } from "lucide-react";
 
 import { CONFIG } from "../constants/config";
@@ -48,6 +49,7 @@ import MonthlyTrackingCard from "../components/tracking/MonthlyTrackingCard";
 import AlternativeScenariosSection, {
   useAlternativeScenariosSeries,
 } from "../components/scenarios/AlternativeScenariosSection";
+import ReportBuilderModal from "../components/reports/ReportBuilderModal";
 
 // -------------------------
 // Helpers
@@ -674,16 +676,23 @@ export default function DashboardPage() {
   const [mode, setMode] = useState("simulation");
   const [selectedYear, setSelectedYear] = useState(null);
   
+  // Estado para modal do Relatório PDF
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
   // Estado para visibilidade dos cenários alternativos no gráfico
   const [alternativeChartVisibility, setAlternativeChartVisibility] = useState({
     consumption: false,
     preservation: false,
   });
 
+  // Estado para toggle "Considerar Metas e Cenários" nos cenários alternativos
+  const [includeImpactsInAltScenarios, setIncludeImpactsInAltScenarios] = useState(false);
+
   // Hook para calcular séries extras dos cenários alternativos (uses clientData safely)
   const { extraSeries: alternativeExtraSeries } = useAlternativeScenariosSeries(
     clientData || {},
-    alternativeChartVisibility
+    alternativeChartVisibility,
+    includeImpactsInAltScenarios
   );
 
   // Handler para toggle de visibilidade no gráfico
@@ -692,6 +701,11 @@ export default function DashboardPage() {
       ...prev,
       [modeKey]: visible,
     }));
+  }, []);
+
+  // Handler para toggle "Considerar Metas e Cenários"
+  const handleToggleIncludeImpacts = useCallback(() => {
+    setIncludeImpactsInAltScenarios((prev) => !prev);
   }, []);
 
   // Handler para aplicar cenário alternativo
@@ -910,27 +924,39 @@ const seriesAdjusted = showTracking
         </div>
       )}
 
-      {/* Toggle + Ano */}
+      {/* Toggle + Ano + Relatório */}
       <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-        <div className="inline-flex rounded-2xl border border-border bg-surface/30 overflow-hidden">
-          <button
-            onClick={() => setMode("simulation")}
-            className={`px-4 py-3 text-sm font-bold flex items-center gap-2 transition ${
-              !showTracking ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            <LineChart size={18} />
-            Simulação
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="inline-flex rounded-2xl border border-border bg-surface/30 overflow-hidden">
+            <button
+              onClick={() => setMode("simulation")}
+              className={`px-4 py-3 text-sm font-bold flex items-center gap-2 transition ${
+                !showTracking ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <LineChart size={18} />
+              Simulação
+            </button>
 
+            <button
+              onClick={() => setMode("tracking")}
+              className={`px-4 py-3 text-sm font-bold flex items-center gap-2 transition ${
+                showTracking ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <Calendar size={18} />
+              Acompanhamento
+            </button>
+          </div>
+
+          {/* Botão Gerar Relatório PDF */}
           <button
-            onClick={() => setMode("tracking")}
-            className={`px-4 py-3 text-sm font-bold flex items-center gap-2 transition ${
-              showTracking ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"
-            }`}
+            onClick={() => setIsReportModalOpen(true)}
+            className="px-4 py-3 text-sm font-bold flex items-center gap-2 rounded-2xl border border-border bg-surface/30 text-text-secondary hover:text-text-primary hover:border-accent/50 hover:bg-accent/5 transition"
+            title="Gerar Relatório PDF personalizado"
           >
-            <Calendar size={18} />
-            Acompanhamento
+            <FileText size={18} />
+            <span className="hidden sm:inline">Relatório PDF</span>
           </button>
         </div>
 
@@ -1291,10 +1317,20 @@ const seriesAdjusted = showTracking
             onApplyScenario={handleApplyAlternativeScenario}
             chartVisibility={alternativeChartVisibility}
             onToggleChartVisibility={handleToggleChartVisibility}
+            includeImpacts={includeImpactsInAltScenarios}
+            onToggleIncludeImpacts={handleToggleIncludeImpacts}
             showToast={showToast}
           />
         )}
       </div>
+
+      {/* Modal do Relatório PDF */}
+      <ReportBuilderModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        clientData={clientData}
+        kpis={kpisNormalized}
+      />
     </div>
   );
 }
