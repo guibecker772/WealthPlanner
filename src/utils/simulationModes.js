@@ -2,6 +2,12 @@
 // Solvers e funções para os modos "Consumo do Patrimônio Total" e "Preservação do Patrimônio"
 
 import { toNumber } from "./format";
+import { convertToBRL, DEFAULT_FX_RATES } from "./fx";
+import {
+  normalizeTimelineRule,
+  getMonthlyContributionAtAge,
+  normalizeTimeline,
+} from "./contributionTimeline";
 
 // ========================================
 // CONSTANTES E HELPERS
@@ -66,35 +72,89 @@ function normalizeRate(x, fallback = 0) {
   return n;
 }
 
+/**
+ * Helper: Calcula patrimônio inicial em BRL (financeiro + previdência) com conversão FX.
+ * Segue a mesma lógica do FinancialEngine.splitAssets para garantir consistência.
+ * 
+ * @param {Array} assets - Lista de ativos do cliente
+ * @param {object} clientData - Dados do cliente (para acessar fx)
+ * @returns {number} - Patrimônio inicial em BRL
+ */
+function calculateInitialWealthBRL(assets, clientData = {}) {
+  const list = Array.isArray(assets) ? assets : [];
+  
+  // Obter FX do cenário com fallback
+  const scenarioFx = {
+    USD_BRL: clientData?.fx?.USD_BRL ?? DEFAULT_FX_RATES.USD_BRL,
+    EUR_BRL: clientData?.fx?.EUR_BRL ?? DEFAULT_FX_RATES.EUR_BRL,
+  };
+  
+  let financialTotal = 0;
+  let previdenciaTotal = 0;
+  
+  for (const a of list) {
+    // Converter para BRL usando FX (mesma lógica do convertToBRL em fx.js)
+    const val = convertToBRL(a, scenarioFx) || toNumber(a?.value ?? a?.amount ?? a?.valor ?? 0, 0);
+    
+    const rawType = a?.type ?? a?.assetType ?? a?.category ?? "";
+    const t = normalizeText(rawType);
+    
+    // Categorização idêntica ao FinancialEngine.splitAssets
+    if (t === "previdencia" || t === "previdência") {
+      previdenciaTotal += val;
+    } else {
+      // Exclui bens ilíquidos (imóvel, veículo, empresa, etc.)
+      const illiquidTypes = new Set([
+        "real_estate",
+        "imovel",
+        "imoveis",
+        "bens",
+        "business",
+        "empresa",
+        "vehicle",
+        "veiculo",
+        "other",
+        "outros",
+      ]);
+      
+      if (!illiquidTypes.has(t)) {
+        financialTotal += val;
+      }
+    }
+  }
+  
+  // Retorna financeiro + previdência (mesma regra do baseline: initialLiquidForPlan)
+  return financialTotal + previdenciaTotal;
+}
+
 // ========================================
 // SIMULAÇÃO SIMPLIFICADA (REUSA LÓGICA DO MOTOR)
 // ========================================
 
-/**
- * Helper: normaliza regra de contributionTimeline
- */
-function normalizeTimelineRule(rule) {
-  if (!rule) return null;
-  return {
-    startAge: toNumber(rule.startAge ?? rule.idadeInicio ?? 0, 0),
-    endAge: toNumber(rule.endAge ?? rule.idadeFim ?? 999, 999),
-    amount: toNumber(rule.amount ?? rule.valor ?? 0, 0),
-    enabled: rule.enabled !== false,
-  };
-}
+// ✅ normalizeTimelineRule e getMonthlyContributionAtAge importados de ./contributionTimeline
+// para garantir semântica byte-for-byte equivalente ao FinancialEngine
 
 /**
- * Helper: resolve aporte mensal considerando timeline
+ * Helper: Marca a idade em que o patrimônio zerou pela primeira vez.
+ * 
+ * Regras:
+ * - Se zeroedAtAge já está setado, mantém o primeiro (não re-marca)
+ * - Se before > 0 && after === 0, registra ageToRecord
+ * - Caso contrário, mantém null
+ * 
+ * @param {number} before - Patrimônio antes da operação
+ * @param {number} after - Patrimônio após a operação
+ * @param {number} ageToRecord - Idade a registrar se houve depletion
+ * @param {number|null} zeroedAtAge - Estado atual de zeroedAtAge
+ * @returns {number|null} - Novo valor de zeroedAtAge
  */
-function getMonthlyContributionAtAge(age, baseMonthly, timeline = []) {
-  // Procura regra ativa para a idade
-  for (const rule of timeline) {
-    if (!rule || rule.enabled === false) continue;
-    if (age >= rule.startAge && age < rule.endAge) {
-      return toNumber(rule.amount, baseMonthly);
-    }
-  }
-  return baseMonthly;
+export function markZeroedIfNeeded(before, after, ageToRecord, zeroedAtAge) {
+  // Se já marcou antes, não re-marca
+  if (zeroedAtAge !== null) return zeroedAtAge;
+  // Se caiu de > 0 para 0, marca a idade
+  if (before > 0 && after === 0) return ageToRecord;
+  // Caso contrário, mantém null
+  return null;
 }
 
 /**
@@ -113,9 +173,9 @@ function getMonthlyContributionAtAge(age, baseMonthly, timeline = []) {
  * @param {Array} params.cashInEvents - (opcional) Eventos de entrada de caixa [{age, value}]
  * @param {Array} params.impactGoals - (opcional) Metas de impacto [{age, value}]
  * @param {Array} params.contributionTimeline - (opcional) Timeline de aportes [{startAge, endAge, amount}]
- * @returns {object} { finalWealth, wealthAtRetirement, series }
+ * @returns {object} { finalWealth, wealthAtRetirement, series, zeroedAtAge, lifeExpectancy }
  */
-function simulateWealth({
+export function simulateWealth({
   initialWealth,
   monthlyContribution,
   currentAge,
@@ -150,8 +210,8 @@ function simulateWealth({
     }
   }
 
-  // Normaliza timeline
-  const timeline = contributionTimeline.map(normalizeTimelineRule).filter((r) => r && r.enabled !== false);
+  // ✅ Normaliza timeline usando util compartilhado (semântica equivalente ao FinancialEngine)
+  const timeline = normalizeTimeline(contributionTimeline);
 
   let wealth = toNumber(initialWealth, 0);
   const series = [];
@@ -167,7 +227,12 @@ function simulateWealth({
       const monthlyContrib = timeline.length > 0
         ? getMonthlyContributionAtAge(age, baseForThisAge, timeline)
         : baseForThisAge;
+      
+      // ✅ Contribuição negativa (resgate) pode zerar patrimônio
+      const wealthBeforeContrib = wealth;
       wealth += toNumber(monthlyContrib, 0);
+      if (wealth < 0) wealth = 0; // Não pode ficar negativo
+      zeroedAtAge = markZeroedIfNeeded(wealthBeforeContrib, wealth, age + (m / 12), zeroedAtAge);
 
       // Retorno do mês
       wealth *= 1 + monthlyRate;
@@ -176,11 +241,8 @@ function simulateWealth({
       if (age >= retAge && desiredMonthlyIncome > 0) {
         const wealthBeforeWithdraw = wealth;
         wealth = Math.max(0, wealth - desiredMonthlyIncome);
-        
-        // Track when wealth first hits zero
-        if (wealthBeforeWithdraw > 0 && wealth === 0 && zeroedAtAge === null) {
-          zeroedAtAge = age + (m / 12); // Approximate age including month fraction
-        }
+        // ✅ Usa helper consistente para marcar depletion
+        zeroedAtAge = markZeroedIfNeeded(wealthBeforeWithdraw, wealth, age + (m / 12), zeroedAtAge);
       }
     }
 
@@ -190,8 +252,13 @@ function simulateWealth({
     const cashIn = cashInByAge.get(nextAge) || 0;
     if (cashIn > 0) wealth += cashIn;
 
+    // ✅ FIX: impactGoals pode zerar patrimônio - deve marcar zeroedAtAge = nextAge
     const goalsAtAge = goalsByAge.get(nextAge) || 0;
-    if (goalsAtAge > 0) wealth = Math.max(0, wealth - goalsAtAge);
+    if (goalsAtAge > 0) {
+      const wealthBeforeGoals = wealth;
+      wealth = Math.max(0, wealth - goalsAtAge);
+      zeroedAtAge = markZeroedIfNeeded(wealthBeforeGoals, wealth, nextAge, zeroedAtAge);
+    }
 
     // Captura patrimônio na aposentadoria
     if (nextAge === retAge) {
@@ -350,18 +417,10 @@ export function solveRequiredContribution({ mode, inputs, targetRetirementAge, i
     15000
   );
 
-  // Patrimônio inicial (financeiro + previdência)
+  // ✅ Patrimônio inicial em BRL (financeiro + previdência) com conversão FX
+  // Usa a mesma lógica do baseline (FinancialEngine.splitAssets)
   const assets = Array.isArray(inputs.assets) ? inputs.assets : [];
-  let initialWealth = 0;
-  for (const a of assets) {
-    const val = toNumber(a?.value ?? a?.amount ?? a?.valor, 0);
-    const type = normalizeText(a?.type ?? a?.assetType ?? a?.category ?? "");
-    // Exclui bens imóveis da projeção de aposentadoria
-    const isIlliquid = ["real_estate", "imovel", "imoveis", "bens", "business", "empresa", "vehicle", "veiculo"].includes(type);
-    if (!isIlliquid) {
-      initialWealth += val;
-    }
-  }
+  const initialWealth = calculateInitialWealthBRL(assets, inputs);
 
   // Taxa de retorno real
   const nominalReturn = pickNominalReturnByProfile(inputs);
@@ -551,17 +610,10 @@ export function solveRetirementAge({ mode, inputs, fixedMonthlyContribution, imp
   );
   const monthlyContribution = toNumber(fixedMonthlyContribution ?? inputs.monthlyContribution, 5000);
 
-  // Patrimônio inicial
+  // ✅ Patrimônio inicial em BRL (financeiro + previdência) com conversão FX
+  // Usa a mesma lógica do baseline (FinancialEngine.splitAssets)
   const assets = Array.isArray(inputs.assets) ? inputs.assets : [];
-  let initialWealth = 0;
-  for (const a of assets) {
-    const val = toNumber(a?.value ?? a?.amount ?? a?.valor, 0);
-    const type = normalizeText(a?.type ?? a?.assetType ?? a?.category ?? "");
-    const isIlliquid = ["real_estate", "imovel", "imoveis", "bens", "business", "empresa", "vehicle", "veiculo"].includes(type);
-    if (!isIlliquid) {
-      initialWealth += val;
-    }
-  }
+  const initialWealth = calculateInitialWealthBRL(assets, inputs);
 
   // Taxa de retorno real
   const nominalReturn = pickNominalReturnByProfile(inputs);
@@ -713,17 +765,10 @@ export function simulateMode({ mode, inputs, monthlyContribution, retirementAge,
     15000
   );
 
-  // Patrimônio inicial
+  // ✅ Patrimônio inicial em BRL (financeiro + previdência) com conversão FX
+  // Usa a mesma lógica do baseline (FinancialEngine.splitAssets)
   const assets = Array.isArray(inputs.assets) ? inputs.assets : [];
-  let initialWealth = 0;
-  for (const a of assets) {
-    const val = toNumber(a?.value ?? a?.amount ?? a?.valor, 0);
-    const type = normalizeText(a?.type ?? a?.assetType ?? a?.category ?? "");
-    const isIlliquid = ["real_estate", "imovel", "imoveis", "bens", "business", "empresa", "vehicle", "veiculo"].includes(type);
-    if (!isIlliquid) {
-      initialWealth += val;
-    }
-  }
+  const initialWealth = calculateInitialWealthBRL(assets, inputs);
 
   // Taxa de retorno real
   const nominalReturn = pickNominalReturnByProfile(inputs);

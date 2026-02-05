@@ -14,6 +14,8 @@ import {
   Trash2,
   UserCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Settings as SettingsIcon,
   Shield,
   PieChart,
@@ -36,6 +38,8 @@ import {
 const STORAGE_VIEW = "planner_view_mode_v1";
 const STORAGE_AI = "planner_ai_enabled_v1";
 const STORAGE_STRESS = "planner_stress_enabled_v1";
+const STORAGE_LEFT_COLLAPSED = "planner_left_collapsed_v1";
+const STORAGE_RIGHT_COLLAPSED = "planner_right_collapsed_v1";
 
 const STORAGE_SIMS_BASE = "planner_simulations_v1";
 const STORAGE_ACTIVE_SIM_BASE = "planner_active_sim_id_v1";
@@ -393,7 +397,7 @@ function UserMenu({ user, onLogout }) {
   );
 }
 
-function MainSidebar({ viewMode, logout }) {
+function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, isDirty, readOnly }) {
   const tabs = [
     { to: "/dashboard/overview", label: "Visão Geral", icon: LayoutDashboard },
     { to: "/dashboard/assets", label: "Patrimônio", icon: Wallet },
@@ -404,9 +408,11 @@ function MainSidebar({ viewMode, logout }) {
     { to: "/dashboard/settings", label: "Dados do Cliente", icon: UserCircle2 },
   ];
 
+  const saveDisabled = readOnly || !isDirty;
+
   return (
-    <aside className="w-20 lg:w-64 bg-background-secondary border-r border-border flex flex-col transition-all duration-300 font-sans">
-      <div className="h-24 flex items-center justify-center lg:justify-start px-4 lg:px-6">
+    <aside className={`${collapsed ? "w-20" : "w-20 lg:w-64"} bg-background-secondary border-r border-border flex flex-col transition-all duration-300 font-sans`}>
+      <div className="h-24 flex items-center justify-between px-4 lg:px-6">
         <Link to="/dashboard/overview" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent-dark rounded-xl shadow-glow-accent flex items-center justify-center shrink-0">
             <svg
@@ -425,10 +431,23 @@ function MainSidebar({ viewMode, logout }) {
             </svg>
           </div>
 
-          <span className="hidden lg:block font-display font-bold text-xl text-text-primary tracking-tight">
-            Private Wealth
-          </span>
+          {!collapsed && (
+            <span className="hidden lg:block font-display font-bold text-xl text-text-primary tracking-tight">
+              Private Wealth
+            </span>
+          )}
         </Link>
+
+        {/* Botão toggle collapse - apenas visível em lg+ */}
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-highlight transition-all"
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+          title={collapsed ? "Expandir menu" : "Recolher menu"}
+        >
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
       </div>
 
       <nav className="flex-1 py-8 space-y-2 overflow-y-auto no-scrollbar px-3">
@@ -440,12 +459,14 @@ function MainSidebar({ viewMode, logout }) {
               key={t.to}
               to={t.to}
               className={({ isActive }) =>
-                `w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all group relative ${
+                `w-full flex items-center ${collapsed ? "justify-center" : "gap-4"} px-4 py-3.5 rounded-xl transition-all group relative ${
                   isActive
                     ? "text-accent bg-accent-subtle/50"
                     : "text-text-secondary hover:bg-surface-highlight hover:text-text-primary"
                 }`
               }
+              title={collapsed ? t.label : undefined}
+              aria-label={t.label}
             >
               {({ isActive }) => (
                 <>
@@ -458,9 +479,11 @@ function MainSidebar({ viewMode, logout }) {
                       isActive ? "text-accent filter drop-shadow-sm" : "group-hover:text-text-primary"
                     }`}
                   />
-                  <span className={`hidden lg:block font-medium text-[15px] ${isActive ? "font-semibold" : ""}`}>
-                    {t.label}
-                  </span>
+                  {!collapsed && (
+                    <span className={`hidden lg:block font-medium text-[15px] ${isActive ? "font-semibold" : ""}`}>
+                      {t.label}
+                    </span>
+                  )}
                 </>
               )}
             </NavLink>
@@ -469,17 +492,42 @@ function MainSidebar({ viewMode, logout }) {
       </nav>
 
       <div className="p-4 mx-2 mb-4 space-y-2">
-        <div className="hidden lg:block text-xs text-text-muted px-2">
-          Modo: <b className="text-text-secondary">{viewMode === "advisor" ? "Advisor" : "Apresentação"}</b>
-        </div>
+        {/* Botão Salvar - sempre visível */}
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saveDisabled}
+          className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-center lg:justify-start gap-4"} px-4 py-3.5 rounded-xl transition-all relative ${
+            saveDisabled
+              ? "opacity-50 cursor-not-allowed text-text-secondary"
+              : "text-accent hover:bg-accent-subtle/30 border border-accent/30"
+          }`}
+          title={collapsed ? (saveDisabled ? "Nada a salvar" : "Salvar alterações") : undefined}
+          aria-label="Salvar alterações"
+        >
+          <div className="relative">
+            <Save size={22} className="shrink-0" />
+            {isDirty && !saveDisabled && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-accent rounded-full animate-pulse"></span>
+            )}
+          </div>
+          {!collapsed && <span className="hidden lg:block font-medium text-[15px]">Salvar</span>}
+        </button>
+
+        {!collapsed && (
+          <div className="hidden lg:block text-xs text-text-muted px-2">
+            Modo: <b className="text-text-secondary">{viewMode === "advisor" ? "Advisor" : "Apresentação"}</b>
+          </div>
+        )}
 
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center lg:justify-start gap-4 px-4 py-3.5 rounded-xl text-text-secondary hover:bg-danger-subtle hover:text-danger transition-all group"
-          title="Sair"
+          className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-center lg:justify-start gap-4"} px-4 py-3.5 rounded-xl text-text-secondary hover:bg-danger-subtle hover:text-danger transition-all group`}
+          title={collapsed ? "Sair" : undefined}
+          aria-label="Sair"
         >
           <LogOut size={22} className="shrink-0 group-hover:text-danger transition-colors" />
-          <span className="hidden lg:block font-medium text-[15px]">Sair</span>
+          {!collapsed && <span className="hidden lg:block font-medium text-[15px]">Sair</span>}
         </button>
       </div>
     </aside>
@@ -495,7 +543,7 @@ function getActiveLabel(index, scenarioName) {
   return `Cenário ${index + 1}`;
 }
 
-function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDelete, onSave, onRename, readOnly }) {
+function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDelete, onSave, onRename, readOnly, collapsed, onToggleCollapsed, isDirty }) {
   const { showToast } = useToast();
   
   // Estado de privacidade - default OFF, sem persistência (reset a cada refresh)
@@ -525,8 +573,91 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
     onSelect(simId);
   };
 
+  const saveDisabled = readOnly || !isDirty;
+  const deleteDisabled = readOnly || simulations.length <= 1;
+
+  // ✅ Modo Rail (colapsado)
+  if (collapsed) {
+    return (
+      <div className="w-20 shrink-0 bg-background-secondary/80 border-l border-border backdrop-blur-md p-3 flex flex-col gap-3 transition-all duration-300">
+        {/* Botão expandir */}
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className="w-full flex items-center justify-center p-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-highlight transition-all"
+          aria-label="Expandir painel de simulações"
+          title="Expandir painel"
+        >
+          <ChevronLeft size={20} />
+        </button>
+
+        {/* Indicador da simulação ativa */}
+        <div 
+          className="w-full p-3 rounded-xl bg-accent-subtle/30 border border-accent/30 flex items-center justify-center"
+          title={`Ativo: ${activeSim?.name || activeGenericLabel}`}
+        >
+          <GitBranch size={18} className="text-accent" />
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Ações do rail */}
+        <button
+          type="button"
+          onClick={onCreate}
+          disabled={readOnly}
+          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all ${
+            readOnly
+              ? "opacity-50 cursor-not-allowed text-text-secondary"
+              : "text-text-secondary hover:text-text-primary hover:bg-surface-highlight"
+          }`}
+          aria-label="Nova simulação"
+          title="Nova simulação"
+        >
+          <Plus size={20} />
+        </button>
+
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saveDisabled}
+          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all relative ${
+            saveDisabled
+              ? "opacity-50 cursor-not-allowed text-text-secondary"
+              : "text-accent hover:bg-accent-subtle/30 border border-accent/30"
+          }`}
+          aria-label="Salvar alterações"
+          title={saveDisabled ? "Nada a salvar" : "Salvar alterações"}
+        >
+          <div className="relative">
+            <Save size={20} />
+            {isDirty && !saveDisabled && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full animate-pulse"></span>
+            )}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={deleteDisabled}
+          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all ${
+            deleteDisabled
+              ? "opacity-50 cursor-not-allowed text-text-secondary"
+              : "text-danger hover:bg-danger-subtle/20"
+          }`}
+          aria-label={simulations.length <= 1 ? "Mantenha pelo menos 1 simulação" : "Excluir simulação ativa"}
+          title={simulations.length <= 1 ? "Mantenha pelo menos 1 simulação" : "Excluir simulação ativa"}
+        >
+          <Trash2 size={20} />
+        </button>
+      </div>
+    );
+  }
+
+  // ✅ Modo Expandido (UI original)
   return (
-    <div className="w-80 shrink-0 bg-background-secondary/80 border-l border-border backdrop-blur-md p-6">
+    <div className="w-80 shrink-0 bg-background-secondary/80 border-l border-border backdrop-blur-md p-6 transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h3 className="font-display font-semibold text-text-primary">Simulações</h3>
@@ -547,19 +678,32 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
           </button>
         </div>
 
-        <button
-          onClick={onCreate}
-          disabled={readOnly}
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
-            readOnly
-              ? "opacity-50 cursor-not-allowed border-border text-text-secondary"
-              : "border-border text-text-secondary hover:text-text-primary hover:bg-surface-highlight"
-          }`}
-          title="Criar nova simulação"
-        >
-          <Plus size={16} />
-          Nova
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onCreate}
+            disabled={readOnly}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
+              readOnly
+                ? "opacity-50 cursor-not-allowed border-border text-text-secondary"
+                : "border-border text-text-secondary hover:text-text-primary hover:bg-surface-highlight"
+            }`}
+            title="Criar nova simulação"
+          >
+            <Plus size={16} />
+            Nova
+          </button>
+
+          {/* Botão recolher */}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-highlight transition-all"
+            aria-label="Recolher painel de simulações"
+            title="Recolher painel"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2 max-h-[55vh] overflow-y-auto no-scrollbar pr-1">
@@ -626,9 +770,9 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={onSave}
-            disabled={readOnly}
+            disabled={saveDisabled}
             className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm border transition-all ${
-              readOnly
+              saveDisabled
                 ? "opacity-50 cursor-not-allowed border-border text-text-secondary"
                 : "border-accent/40 text-accent hover:bg-accent-subtle/20"
             }`}
@@ -640,9 +784,9 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
 
           <button
             onClick={onDelete}
-            disabled={readOnly || simulations.length <= 1}
+            disabled={deleteDisabled}
             className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm border transition-all ${
-              readOnly || simulations.length <= 1
+              deleteDisabled
                 ? "opacity-50 cursor-not-allowed border-border text-text-secondary"
                 : "border-danger/40 text-danger hover:bg-danger-subtle/20"
             }`}
@@ -738,6 +882,16 @@ export default function AppShell() {
   const [isStressTest, setIsStressTest] = useState(() => (localStorage.getItem(STORAGE_STRESS) || "false") === "true");
   const readOnly = viewMode === "client";
 
+  // ✅ Estados de collapse das sidebars com persistência localStorage
+  const [leftCollapsed, setLeftCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(STORAGE_LEFT_COLLAPSED) === "true";
+  });
+  const [rightCollapsed, setRightCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(STORAGE_RIGHT_COLLAPSED) === "true";
+  });
+
   const [simulations, setSimulations] = useState([]);
   const [activeSimId, setActiveSimId] = useState(null);
   const [officialClientData, setOfficialClientData] = useState(ensureClientShape(DEFAULT_CLIENT));
@@ -750,6 +904,8 @@ export default function AppShell() {
   useEffect(() => localStorage.setItem(STORAGE_VIEW, viewMode), [viewMode]);
   useEffect(() => localStorage.setItem(STORAGE_AI, String(aiEnabled)), [aiEnabled]);
   useEffect(() => localStorage.setItem(STORAGE_STRESS, String(isStressTest)), [isStressTest]);
+  useEffect(() => localStorage.setItem(STORAGE_LEFT_COLLAPSED, String(leftCollapsed)), [leftCollapsed]);
+  useEffect(() => localStorage.setItem(STORAGE_RIGHT_COLLAPSED, String(rightCollapsed)), [rightCollapsed]);
 
   useEffect(() => {
     if (!uid) return;
@@ -1037,9 +1193,21 @@ export default function AppShell() {
     setTrackingByScenario,
   };
 
+  // Calcula classe de padding do conteúdo baseado nos estados colapsados
+  const effectiveRightCollapsed = !showSidebarSimulations || rightCollapsed;
+  const contentPaddingClass = effectiveRightCollapsed ? "" : "pr-0";
+
   return (
     <div className="flex h-screen overflow-hidden bg-background font-sans text-text-primary">
-      <MainSidebar viewMode={viewMode} logout={logout} />
+      <MainSidebar 
+        viewMode={viewMode} 
+        logout={logout}
+        collapsed={leftCollapsed}
+        onToggleCollapsed={() => setLeftCollapsed(c => !c)}
+        onSave={handleSaveSim}
+        isDirty={hasUnsavedChanges}
+        readOnly={readOnly}
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
         <Header
@@ -1060,7 +1228,7 @@ export default function AppShell() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-accent/5 blur-[150px] rounded-full pointer-events-none z-0"></div>
 
           <main className="relative flex min-h-full z-10">
-            <div className={`flex-1 p-8 lg:p-10 transition-all ${showSidebarSimulations ? "pr-0" : ""}`}>
+            <div className={`flex-1 p-8 lg:p-10 transition-all ${contentPaddingClass}`}>
               {simsError && (
                 <div className="mb-6 p-4 rounded-2xl border border-danger/40 bg-danger-subtle/20 text-danger text-sm">
                   {simsError}
@@ -1079,6 +1247,9 @@ export default function AppShell() {
                 onSave={handleSaveSim}
                 onRename={handleRenameSim}
                 readOnly={readOnly}
+                collapsed={rightCollapsed}
+                onToggleCollapsed={() => setRightCollapsed(c => !c)}
+                isDirty={hasUnsavedChanges}
               />
             )}
           </main>

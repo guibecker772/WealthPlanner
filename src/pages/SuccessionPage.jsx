@@ -1,5 +1,5 @@
 // src/pages/SuccessionPage.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Scale, ArrowRight, AlertCircle, CheckCircle2, Shield, ScrollText, Calculator } from "lucide-react";
@@ -55,6 +55,17 @@ export default function SuccessionPage() {
   const [activeStrategyId, setActiveStrategyId] = useState("overview");
   const [incomeInsuranceBase, setIncomeInsuranceBase] = useState("now");
   const [previdenciaSubTab, setPrevidenciaSubTab] = useState("overview"); // "overview" | "efficiency"
+
+  // ✅ Normalização de ids legados para evitar tabs órfãs
+  useEffect(() => {
+    if (activeStrategyId === "previdencia-tab") {
+      setActiveStrategyId("previdencia");
+      setPrevidenciaSubTab("overview");
+    } else if (activeStrategyId === "pgbl-efficiency") {
+      setActiveStrategyId("previdencia");
+      setPrevidenciaSubTab("efficiency");
+    }
+  }, [activeStrategyId]);
 
   const monthlyCostNow = useMemo(() => getMonthlyCostNow(clientData), [clientData]);
   const monthlyCostRetirement = useMemo(() => getMonthlyCostRetirement(clientData), [clientData]);
@@ -115,7 +126,9 @@ export default function SuccessionPage() {
             onClick={() => setActiveStrategyId(st.id)}
             className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
               activeStrategyId === st.id
-                ? "bg-gold-500 text-navy-950"
+                ? st.id === "previdencia"
+                  ? "bg-violet-500 text-white"
+                  : "bg-gold-500 text-navy-950"
                 : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
             }`}
           >
@@ -123,32 +136,6 @@ export default function SuccessionPage() {
             {st.title}
           </button>
         ))}
-
-        {/* Nova aba: Previdência Privada */}
-        <button
-          onClick={() => setActiveStrategyId("previdencia-tab")}
-          className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
-            activeStrategyId === "previdencia-tab"
-              ? "bg-violet-500 text-white"
-              : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
-          }`}
-        >
-          {activeStrategyId === "previdencia-tab" && <ScrollText size={14} />}
-          Previdência Privada
-        </button>
-
-        {/* Nova aba: Eficiência PGBL */}
-        <button
-          onClick={() => setActiveStrategyId("pgbl-efficiency")}
-          className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
-            activeStrategyId === "pgbl-efficiency"
-              ? "bg-amber-500 text-navy-950"
-              : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
-          }`}
-        >
-          {activeStrategyId === "pgbl-efficiency" && <Calculator size={14} />}
-          Eficiência Fiscal PGBL
-        </button>
       </div>
 
       {activeStrategyId === "overview" ? (
@@ -366,15 +353,46 @@ export default function SuccessionPage() {
             </div>
           )}
         </div>
-      ) : activeStrategyId === "previdencia-tab" ? (
-        <PrevidenciaSuccessionCard
-          clientData={clientData}
-          succession={successionInfo}
-          updateField={updateField}
-          readOnly={readOnly}
-        />
-      ) : activeStrategyId === "pgbl-efficiency" ? (
-        <PGBLEfficiencyCard clientData={clientData} readOnly={readOnly} />
+      ) : activeStrategyId === "previdencia" ? (
+        <div className="space-y-6 animate-fade-in">
+          {/* Sub-tabs de Previdência */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <button
+              onClick={() => setPrevidenciaSubTab("overview")}
+              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
+                previdenciaSubTab === "overview"
+                  ? "bg-violet-500 text-white"
+                  : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+              }`}
+            >
+              <ScrollText size={14} />
+              Previdência (VGBL/PGBL)
+            </button>
+            <button
+              onClick={() => setPrevidenciaSubTab("efficiency")}
+              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
+                previdenciaSubTab === "efficiency"
+                  ? "bg-amber-500 text-navy-950"
+                  : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+              }`}
+            >
+              <Calculator size={14} />
+              Eficiência Fiscal PGBL
+            </button>
+          </div>
+
+          {/* Conteúdo da sub-tab selecionada */}
+          {previdenciaSubTab === "overview" ? (
+            <PrevidenciaSuccessionCard
+              clientData={clientData}
+              succession={successionInfo}
+              updateField={updateField}
+              readOnly={readOnly}
+            />
+          ) : (
+            <PGBLEfficiencyCard clientData={clientData} readOnly={readOnly} />
+          )}
+        </div>
       ) : (
         activeStrategy && (
           <StrategyView

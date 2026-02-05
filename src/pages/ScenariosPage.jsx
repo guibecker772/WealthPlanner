@@ -4,7 +4,6 @@ import { useOutletContext } from "react-router-dom";
 import { GitBranch, Info } from "lucide-react";
 import ContributionTimelineCard from "../components/scenarios/ContributionTimelineCard";
 import CashInEventsCard from "../components/scenarios/CashInEventsCard";
-import TrackingCard from "../components/scenarios/TrackingCard";
 
 export default function ScenariosPage() {
   const ctx = useOutletContext() || {};
@@ -12,9 +11,6 @@ export default function ScenariosPage() {
     clientData,
     updateField,
     readOnly,
-    scenarioId,
-    trackingByScenario,
-    setTrackingByScenario,
   } = ctx;
 
   if (!clientData || typeof updateField !== "function") {
@@ -33,7 +29,7 @@ export default function ScenariosPage() {
             Construção de Cenários
           </h2>
           <p className="text-sm text-text-secondary mt-1">
-            Modele eventos futuros (aportes temporários, heranças, resgates) e acompanhe mês a mês o que aconteceu na prática.
+            Modele eventos futuros como aportes temporários, heranças e resgates programados.
           </p>
         </div>
       </div>
@@ -41,8 +37,7 @@ export default function ScenariosPage() {
       <div className="bg-accent-subtle/50 border border-accent/20 p-4 rounded-xl flex gap-3 items-start text-sm text-text-secondary">
         <Info size={20} className="text-accent shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <b>Nota:</b> As alterações de “Simulação” impactam o gráfico e KPIs do Dashboard.
-          O “Acompanhamento” permite comparar <b>Plano vs Real</b> por cenário.
+          <b>Nota:</b> As alterações abaixo (aportes temporários, heranças, resgates) impactam diretamente o gráfico e KPIs do Dashboard.
         </p>
       </div>
 
@@ -51,15 +46,6 @@ export default function ScenariosPage() {
         <ContributionTimelineCard clientData={clientData} updateField={updateField} readOnly={readOnly} />
         <CashInEventsCard clientData={clientData} updateField={updateField} readOnly={readOnly} />
       </div>
-
-      {/* ACOMPANHAMENTO */}
-      <TrackingCard
-        scenarioId={scenarioId}
-        clientData={clientData}
-        trackingByScenario={trackingByScenario}
-        setTrackingByScenario={setTrackingByScenario}
-        readOnly={readOnly}
-      />
     </div>
   );
 }

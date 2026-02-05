@@ -44,6 +44,7 @@ import {
   nominalToRealReturn,
   toNumber,
 } from "../utils/format";
+import { prependSnapshotIfMissing } from "../utils/series/prependSnapshotIfMissing";
 
 import MonthlyTrackingCard from "../components/tracking/MonthlyTrackingCard";
 import AlternativeScenariosSection, {
@@ -328,10 +329,12 @@ function readContributionRules(clientData) {
 // -------------------------
 // Gráfico
 // -------------------------
-function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted, extraSeries = [] }) {
+function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted, extraSeries = [], baselineWealthBRL = 0 }) {
   const allGoals = (clientData?.financialGoals || []).filter((g) => (g?.value || 0) > 0);
 
   const nowAge = Number(clientData?.currentAge ?? clientData?.idadeAtual);
+  // ✅ Normaliza idade atual para inteiro (padrão do gráfico, XAxis usa allowDecimals={false})
+  const currentAgeInt = Number.isFinite(nowAge) ? Math.floor(nowAge) : 0;
   const retirementAge = clientData?.retirementAge ?? clientData?.endContributionsAge ?? 60;
   const contributionEndAge = clientData?.contributionEndAge ?? clientData?.endContributionsAge ?? 60;
 
@@ -353,8 +356,23 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
   }, [clientData?.cashInEvents]);
 
   const chartData = useMemo(() => {
-    const o = Array.isArray(seriesOriginal) ? seriesOriginal : [];
-    const a = Array.isArray(seriesAdjusted) ? seriesAdjusted : [];
+    // ✅ Aplicar snapshot em todas as séries (baseline e alternativos)
+    // Garante que todas começam com o mesmo ponto em age = currentAgeInt
+    const snapshotWealth = Number.isFinite(baselineWealthBRL) && baselineWealthBRL > 0 
+      ? baselineWealthBRL 
+      : 0;
+    
+    const rawO = Array.isArray(seriesOriginal) ? seriesOriginal : [];
+    const rawA = Array.isArray(seriesAdjusted) ? seriesAdjusted : [];
+    
+    // Prepend snapshot se necessário (anti-duplicação já dentro do helper)
+    const o = snapshotWealth > 0 && currentAgeInt > 0 
+      ? prependSnapshotIfMissing(rawO, currentAgeInt, snapshotWealth)
+      : rawO;
+    const a = snapshotWealth > 0 && currentAgeInt > 0 
+      ? prependSnapshotIfMissing(rawA, currentAgeInt, snapshotWealth)
+      : rawA;
+    
     if (!o.length && !a.length) return [];
 
     const byAge = new Map();
@@ -372,10 +390,15 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
       byAge.set(age, { ...prev, wealthAdjusted: p?.financial ?? p?.wealth ?? 0 });
     });
 
-    // Adiciona séries extras (cenários alternativos)
+    // ✅ Adiciona séries extras (cenários alternativos) com snapshot
     extraSeries.forEach((extra) => {
       if (!extra?.data) return;
-      extra.data.forEach((p) => {
+      // Aplicar snapshot nas séries alternativas também
+      const extraData = snapshotWealth > 0 && currentAgeInt > 0
+        ? prependSnapshotIfMissing(extra.data, currentAgeInt, snapshotWealth)
+        : extra.data;
+      
+      extraData.forEach((p) => {
         const age = Number(p?.age);
         if (!Number.isFinite(age)) return;
         const prev = byAge.get(age) || { age };
@@ -389,7 +412,7 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
       ...point,
       chartCashIn: cashInMap[String(point.age)] || null,
     }));
-  }, [seriesOriginal, seriesAdjusted, cashInMap, extraSeries]);
+  }, [seriesOriginal, seriesAdjusted, cashInMap, extraSeries, currentAgeInt, baselineWealthBRL]);
 
   if (!chartData.length) {
     return (
@@ -1307,6 +1330,7 @@ const seriesAdjusted = showTracking
             clientData={clientData}
             showAdjusted={showTracking}
             extraSeries={showTracking ? [] : alternativeExtraSeries}
+            baselineWealthBRL={engineOutput?.kpis?.baselineWealthBRL ?? 0}
           />
         </Card>
 
