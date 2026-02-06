@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 // /api/copilot.js
 export default async function handler(req, res) {
   try {

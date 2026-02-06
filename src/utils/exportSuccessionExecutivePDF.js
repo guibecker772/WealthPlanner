@@ -260,7 +260,8 @@ export function exportSuccessionExecutivePDF({
     let out = null;
     try {
       out = typeof s.indicator === "function" ? s.indicator(kpis, successionInfo, d) : null;
-    } catch (e) {
+    } catch (_e) {
+      // Silently fail - indicator may throw
       out = null;
     }
 
@@ -272,7 +273,9 @@ export function exportSuccessionExecutivePDF({
       if (s.id === "seguro" && liquidityGap > 0) pr = "Alta";
       if (s.id === "offshore" && safe(kpis?.totalWealthNow, 0) > 5000000) pr = "Alta";
       if (s.id === "holding" && (d.illiquidityPct || 0) > 40) pr = "Alta";
-    } catch (e) {}
+    } catch (_e) {
+      // Silently fail - whenToConsider may throw
+    }
 
     const why = out?.context
       ? out.context

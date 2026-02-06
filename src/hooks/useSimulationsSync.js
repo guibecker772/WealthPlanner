@@ -14,7 +14,6 @@ function uid() {
 function deepClone(obj) {
   if (obj == null) return obj;
   try {
-    // eslint-disable-next-line no-undef
     return structuredClone(obj);
   } catch {
     try {

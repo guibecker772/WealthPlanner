@@ -22,7 +22,11 @@ import {
   Eye,
   EyeOff,
   HelpCircle,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
+import { useTheme } from "../theme/useTheme";
 import { useToast } from "../components/ui/Toast";
 import OnboardingModal from "../components/OnboardingModal";
 import GuideTour from "../components/GuideTour";
@@ -314,6 +318,7 @@ function UserMenu({ user, onLogout }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
+  const { themePreference, setThemePreference, effectiveTheme } = useTheme();
 
   useClickOutside(menuRef, () => setOpen(false));
 
@@ -386,6 +391,33 @@ function UserMenu({ user, onLogout }) {
               Segurança
             </button>
 
+            {/* ─── Seletor de Tema ─── */}
+            <div className="my-2 border-t border-border" />
+            <div className="px-3 py-2">
+              <span className="text-xs font-medium text-text-muted uppercase tracking-wide">Tema</span>
+              <div className="flex gap-1 mt-2">
+                {[
+                  { value: 'system', icon: Monitor, label: 'Auto' },
+                  { value: 'dark', icon: Moon, label: 'Escuro' },
+                  { value: 'light', icon: Sun, label: 'Claro' },
+                ].map(({ value, icon: Icon, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setThemePreference(value)}
+                    className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+                      themePreference === value
+                        ? 'bg-accent/15 text-accent border border-accent/30'
+                        : 'text-text-secondary hover:bg-surface-highlight border border-transparent'
+                    }`}
+                    title={label}
+                  >
+                    <Icon size={16} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="my-2 border-t border-border" />
 
             <button
@@ -419,19 +451,21 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
   const saveDisabled = readOnly || !isDirty;
 
   return (
-    <aside className={`${collapsed ? "w-20" : "w-20 lg:w-64"} bg-background-secondary border-r border-border flex flex-col transition-all duration-300 font-sans`}>
+    <aside className={`${collapsed ? "w-20" : "w-20 lg:w-64"} bg-surface-1 border-r border-border flex flex-col transition-all duration-300 font-sans`}>
       <div className="h-24 flex items-center justify-between px-4 lg:px-6">
         <Link to="/dashboard/overview" className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent-dark rounded-xl shadow-glow-accent flex items-center justify-center shrink-0">
+          {/* Logo com menos glow, mais sutil */}
+          <div className="w-10 h-10 bg-surface-3 border border-border-highlight rounded-xl shadow-soft flex items-center justify-center shrink-0">
             <svg
               width="20"
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#0A0C14"
+              stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="text-accent"
             >
               <path d="M12 2L2 7L12 12L22 7L12 2Z" />
               <path d="M2 17L12 22L22 17" />
@@ -440,7 +474,7 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
           </div>
 
           {!collapsed && (
-            <span className="hidden lg:block font-display font-bold text-xl text-text-primary tracking-tight">
+            <span className="hidden lg:block font-display font-bold text-xl text-text tracking-tight">
               Private Wealth
             </span>
           )}
@@ -450,7 +484,7 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
         <button
           type="button"
           onClick={onToggleCollapsed}
-          className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-highlight transition-all"
+          className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-text hover:bg-surface-3 transition-all focus-visible:ring-2 focus-visible:ring-accent/40"
           aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
           title={collapsed ? "Expandir menu" : "Recolher menu"}
         >
@@ -458,7 +492,7 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
         </button>
       </div>
 
-      <nav className="flex-1 py-8 space-y-2 overflow-y-auto no-scrollbar px-3">
+      <nav className="flex-1 py-8 space-y-1 overflow-y-auto no-scrollbar px-3">
         {tabs.map((t) => {
           const Icon = t.icon;
 
@@ -467,10 +501,10 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
               key={t.to}
               to={t.to}
               className={({ isActive }) =>
-                `w-full flex items-center ${collapsed ? "justify-center" : "gap-4"} px-4 py-3.5 rounded-xl transition-all group relative ${
+                `w-full flex items-center ${collapsed ? "justify-center" : "gap-4"} px-4 py-3.5 rounded-xl transition-all group relative focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none ${
                   isActive
-                    ? "text-accent bg-accent-subtle/50"
-                    : "text-text-secondary hover:bg-surface-highlight hover:text-text-primary"
+                    ? "text-text bg-surface-2 border border-border"
+                    : "text-text-muted hover:bg-surface-2/60 hover:text-text"
                 }`
               }
               title={collapsed ? t.label : undefined}
@@ -478,17 +512,18 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
             >
               {({ isActive }) => (
                 <>
+                  {/* Indicador de ativo - traço dourado sutil */}
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-3/5 w-1 bg-accent rounded-r-full"></div>
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-3/5 w-0.5 bg-accent rounded-r-full"></div>
                   )}
                   <Icon
                     size={22}
                     className={`shrink-0 transition-colors ${
-                      isActive ? "text-accent filter drop-shadow-sm" : "group-hover:text-text-primary"
+                      isActive ? "text-accent" : "group-hover:text-text"
                     }`}
                   />
                   {!collapsed && (
-                    <span className={`hidden lg:block font-medium text-[15px] ${isActive ? "font-semibold" : ""}`}>
+                    <span className={`hidden lg:block text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>
                       {t.label}
                     </span>
                   )}
@@ -500,15 +535,17 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
       </nav>
 
       <div className="p-4 mx-2 mb-4 space-y-2">
-        {/* Botão Salvar - sempre visível */}
+        {/* Botão Salvar - neutro quando !isDirty, gold accent quando isDirty */}
         <button
           type="button"
           onClick={onSave}
           disabled={saveDisabled}
-          className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-center lg:justify-start gap-4"} px-4 py-3.5 rounded-xl transition-all relative ${
+          className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-center lg:justify-start gap-4"} px-4 py-3.5 rounded-xl transition-all relative hide-in-client focus-visible:ring-2 focus-visible:ring-accent/40 ${
             saveDisabled
-              ? "opacity-50 cursor-not-allowed text-text-secondary"
-              : "text-accent hover:bg-accent-subtle/30 border border-accent/30"
+              ? "opacity-40 cursor-not-allowed text-text-faint bg-surface-1"
+              : isDirty
+                ? "text-accent-fg bg-accent hover:bg-accent-2 shadow-glow-accent font-semibold"
+                : "text-text-muted bg-surface-2 border border-border hover:bg-surface-3 hover:text-text"
           }`}
           title={collapsed ? (saveDisabled ? "Nada a salvar" : "Salvar alterações") : undefined}
           aria-label="Salvar alterações"
@@ -516,21 +553,21 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
           <div className="relative">
             <Save size={22} className="shrink-0" />
             {isDirty && !saveDisabled && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-accent rounded-full animate-pulse"></span>
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white rounded-full animate-pulse shadow-sm"></span>
             )}
           </div>
           {!collapsed && <span className="hidden lg:block font-medium text-[15px]">Salvar</span>}
         </button>
 
         {!collapsed && (
-          <div className="hidden lg:block text-xs text-text-muted px-2">
-            Modo: <b className="text-text-secondary">{viewMode === "advisor" ? "Advisor" : "Apresentação"}</b>
+          <div className="hidden lg:block text-xs text-text-faint px-2">
+            Modo: <b className="text-text-muted">{viewMode === "advisor" ? "Advisor" : "Apresentação"}</b>
           </div>
         )}
 
         <button
           onClick={logout}
-          className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-center lg:justify-start gap-4"} px-4 py-3.5 rounded-xl text-text-secondary hover:bg-danger-subtle hover:text-danger transition-all group`}
+          className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-center lg:justify-start gap-4"} px-4 py-3.5 rounded-xl text-text-muted hover:bg-danger-subtle hover:text-danger transition-all group focus-visible:ring-2 focus-visible:ring-accent/40`}
           title={collapsed ? "Sair" : undefined}
           aria-label="Sair"
         >
@@ -614,7 +651,7 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
           type="button"
           onClick={onCreate}
           disabled={readOnly}
-          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all ${
+          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all hide-in-client ${
             readOnly
               ? "opacity-50 cursor-not-allowed text-text-secondary"
               : "text-text-secondary hover:text-text-primary hover:bg-surface-highlight"
@@ -629,10 +666,12 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
           type="button"
           onClick={onSave}
           disabled={saveDisabled}
-          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all relative ${
+          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all relative hide-in-client ${
             saveDisabled
-              ? "opacity-50 cursor-not-allowed text-text-secondary"
-              : "text-accent hover:bg-accent-subtle/30 border border-accent/30"
+              ? "opacity-40 cursor-not-allowed text-text-faint"
+              : isDirty
+                ? "bg-accent text-accent-fg hover:bg-accent-2 shadow-glow-accent"
+                : "text-text-muted hover:bg-surface-3 hover:text-text"
           }`}
           aria-label="Salvar alterações"
           title={saveDisabled ? "Nada a salvar" : "Salvar alterações"}
@@ -640,7 +679,7 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
           <div className="relative">
             <Save size={20} />
             {isDirty && !saveDisabled && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full animate-pulse"></span>
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-pulse"></span>
             )}
           </div>
         </button>
@@ -649,7 +688,7 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
           type="button"
           onClick={onDelete}
           disabled={deleteDisabled}
-          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all ${
+          className={`w-full flex items-center justify-center p-3 rounded-xl transition-all hide-in-client ${
             deleteDisabled
               ? "opacity-50 cursor-not-allowed text-text-secondary"
               : "text-danger hover:bg-danger-subtle/20"
@@ -690,7 +729,7 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
           <button
             onClick={onCreate}
             disabled={readOnly}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all hide-in-client ${
               readOnly
                 ? "opacity-50 cursor-not-allowed border-border text-text-secondary"
                 : "border-border text-text-secondary hover:text-text-primary hover:bg-surface-highlight"
@@ -715,7 +754,7 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
       </div>
 
       <div className="space-y-2 max-h-[55vh] overflow-y-auto no-scrollbar pr-1">
-        {simulations.map((s, idx) => {
+        {simulations.map((s) => {
           const active = s.id === activeSimId;
           
           // MODO PRIVACIDADE: não renderizar dados sensíveis no DOM
@@ -761,7 +800,7 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
         })}
       </div>
 
-      <div className="mt-5 pt-5 border-t border-border space-y-3">
+      <div className="mt-5 pt-5 border-t border-border space-y-3 hide-in-client">
         <div>
           <label className="text-xs text-text-secondary font-semibold">Nome do cenário</label>
           <input
@@ -779,10 +818,12 @@ function SimulationsSidebar({ simulations, activeSimId, onSelect, onCreate, onDe
           <button
             onClick={onSave}
             disabled={saveDisabled}
-            className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm border transition-all ${
+            className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
               saveDisabled
-                ? "opacity-50 cursor-not-allowed border-border text-text-secondary"
-                : "border-accent/40 text-accent hover:bg-accent-subtle/20"
+                ? "opacity-50 cursor-not-allowed border border-border text-text-secondary"
+                : isDirty
+                  ? "bg-accent text-accent-fg hover:bg-accent-2 shadow-glow-accent"
+                  : "border border-border text-text-muted hover:bg-surface-3 hover:text-text"
             }`}
             title="Salvar alterações no cenário ativo"
           >
@@ -829,14 +870,14 @@ function Header({
   guideBtnRef,
 }) {
   return (
-    <header className="h-24 shrink-0 flex items-center justify-between px-8 lg:px-10 border-b border-border z-20 relative bg-background/80 backdrop-blur-xl transition-all">
+    <header className="h-24 shrink-0 flex items-center justify-between px-8 lg:px-10 border-b border-border z-20 relative bg-surface-1/60 backdrop-blur-xl transition-all">
       <div>
-        <h1 className="text-3xl font-display font-bold text-text-primary tracking-tight leading-tight">{title}</h1>
-        <p className="text-sm text-text-secondary mt-1 font-medium flex items-center gap-2">
+        <h1 className="text-3xl font-display font-bold text-text tracking-tight leading-tight">{title}</h1>
+        <p className="text-sm text-text-muted mt-1 font-medium flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-accent inline-block"></span>
           {clientName || "Cliente"} • {activeScenarioName || "Cenário Base"}
           {hasUnsavedChanges && (
-            <span className="ml-2 text-[11px] px-2 py-1 rounded-full bg-accent/15 text-accent font-bold">
+            <span className="ml-2 text-[11px] px-2 py-1 rounded-full bg-surface-3 border border-border text-text-muted font-semibold hide-in-client">
               Não salvo
             </span>
           )}
@@ -844,25 +885,27 @@ function Header({
       </div>
 
       <div className="flex items-center gap-4">
+        {/* Toggle Modo - estilo mais sutil */}
         <button
           onClick={() => setViewMode(viewMode === "advisor" ? "client" : "advisor")}
-          className={`px-5 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all flex items-center gap-2 ${
+          className={`px-5 py-2.5 rounded-xl border text-sm font-semibold transition-all flex items-center gap-2 focus-visible:ring-2 focus-visible:ring-accent/40 ${
             viewMode === "advisor"
-              ? "border-accent text-accent hover:bg-accent-subtle"
-              : "bg-surface border-border text-text-secondary hover:text-text-primary"
+              ? "border-border bg-surface-2 text-text hover:bg-surface-3"
+              : "bg-accent-subtle border-accent/30 text-accent"
           }`}
         >
           <Users size={18} />
           {viewMode === "advisor" ? "Modo Advisor" : "Apresentação"}
         </button>
 
+        {/* Stress Test - esconder em client mode */}
         <button
           onClick={() => setIsStressTest((s) => !s)}
           disabled={readOnly}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all border-2 ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all border hide-in-client focus-visible:ring-2 focus-visible:ring-accent/40 ${
             isStressTest
-              ? "bg-danger-subtle border-danger text-danger shadow-glow-accent/20"
-              : "border-border text-text-secondary hover:border-danger/50 hover:text-danger hover:bg-danger-subtle/20"
+              ? "bg-danger-subtle border-danger/50 text-danger"
+              : "border-border text-text-muted hover:border-danger/40 hover:text-danger hover:bg-danger-subtle/30"
           } ${readOnly ? "opacity-50 cursor-not-allowed" : ""}`}
           title={readOnly ? "Disponível apenas no modo Advisor" : "Ativar Stress Test"}
         >
@@ -870,7 +913,7 @@ function Header({
           {isStressTest ? "Stress Ativo" : "Simular Stress"}
         </button>
 
-        {/* ✅ Botão Guia (?) */}
+        {/* ✅ Botão Guia (?) - esconder em client mode */}
         <button
           ref={guideBtnRef}
           type="button"
@@ -1342,8 +1385,11 @@ export default function AppShell() {
   const effectiveRightCollapsed = !showSidebarSimulations || rightCollapsed;
   const contentPaddingClass = effectiveRightCollapsed ? "" : "pr-0";
 
+  // ✅ Client Mode: adiciona classe no container principal
+  const clientModeClass = viewMode === "client" ? "client-mode" : "";
+
   return (
-    <div className="flex h-screen overflow-hidden bg-background font-sans text-text-primary">
+    <div className={`flex h-screen overflow-hidden bg-bg font-sans text-text ${clientModeClass}`}>
       {/* Modal de Onboarding */}
       <OnboardingModal
         open={showOnboarding}

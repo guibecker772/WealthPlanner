@@ -389,8 +389,8 @@ function run(clientData = {}, isStressActiveExternal = false) {
     financialTotal: initialFinancial,
     illiquidTotal: initialIlliquid,
     previdenciaTotal: initialPrevidencia,
-    previdenciaPGBL: initialPGBL,
-    previdenciaVGBL: initialVGBL,
+    previdenciaPGBL: _initialPGBL,
+    previdenciaVGBL: _initialVGBL,
     total: totalNow,
   } = splitAssets(clientData.assets || [], scenarioFx);
 

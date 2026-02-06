@@ -18,15 +18,9 @@ function deepClone(obj) {
 
 export default function PlannerContainer({ defaultClientData, viewMode, aiEnabled }) {
   const {
-    simulations,
-    activeId,
     activeSimulation,
     isDirty,
-    selectSimulation,
-    createSimulation,
-    renameSimulation,
     saveActiveSimulation,
-    deleteSimulation,
     markDirty,
   } = useSimulationsSync(defaultClientData);
 

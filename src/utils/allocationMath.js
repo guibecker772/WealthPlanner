@@ -508,7 +508,7 @@ function generateCandidates(step = 5, limits = PROFILE_LIMITS.moderado) {
           const pre = Math.max(0, Math.round(rfCombo.pre));
           const ipca = Math.max(0, Math.round(rfCombo.ipca));
           
-          const total = cash + pos + pre + ipca + acoes + fiis + exterior + outros;
+          const _total = cash + pos + pre + ipca + acoes + fiis + exterior + outros;
           
           // Ajustar para somar 100
           const breakdown = {
@@ -1121,10 +1121,10 @@ const CANONICAL_CLASS_MAP = {
 /**
  * Normaliza chaves de breakdown para o set canônico do Guia de Alocação
  * @param {object} breakdown - breakdown vindo do UI (chaves podem ser variantes)
- * @param {'BR'|'INTL'} mode - modo do detalhamento
+ * @param {'BR'|'INTL'} _mode - modo do detalhamento (reservado para uso futuro)
  * @returns {object|null} breakdown normalizado com chaves canônicas, ou null se inválido
  */
-export function normalizeBreakdownKeys(breakdown, mode = 'BR') {
+export function normalizeBreakdownKeys(breakdown, _mode = 'BR') {
   if (!breakdown || typeof breakdown !== 'object') {
     return null;
   }

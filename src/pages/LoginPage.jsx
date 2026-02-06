@@ -122,22 +122,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-[#09090B] text-white overflow-hidden font-sans items-center justify-center">
+    <div className="flex min-h-screen w-full bg-bg text-text overflow-hidden font-sans items-center justify-center">
       {/* --- FORMULÁRIO DE LOGIN (CENTRALIZADO) --- */}
-      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8 lg:p-12 bg-[#09090B] relative max-w-lg">
+      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8 lg:p-12 bg-bg relative max-w-lg">
         {/* Logo no topo */}
         <div className="flex items-center gap-3 mb-10">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B5952F] text-[#0A0C14] grid place-items-center font-black text-xl shadow-[0_0_40px_rgba(212,175,55,0.3)]">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-accent to-accent-2 text-accent-fg grid place-items-center font-black text-xl shadow-glow-accent">
             PW
           </div>
           <span className="text-xl font-bold tracking-tight">Private Wealth</span>
         </div>
 
         <div className="absolute top-8 right-8 flex items-center gap-2 text-sm">
-          <span className="text-slate-400">{mode === "login" ? "Não tem uma conta?" : "Já tem uma conta?"}</span>
+          <span className="text-text-muted">{mode === "login" ? "Não tem uma conta?" : "Já tem uma conta?"}</span>
           <button
             onClick={() => setMode(mode === "login" ? "signup" : "login")}
-            className="text-[#D4AF37] font-semibold hover:underline"
+            className="text-accent font-semibold hover:underline"
           >
             {mode === "login" ? "Criar agora" : "Entrar"}
           </button>
@@ -146,10 +146,10 @@ export default function LoginPage() {
         <div className="w-full max-w-[400px] space-y-8">
 
           <div className="space-y-2 text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-white">
+            <h2 className="text-3xl font-bold tracking-tight text-text">
               {mode === "login" ? "Acesse sua conta" : "Crie sua conta"}
             </h2>
-            <p className="text-slate-400">
+            <p className="text-text-muted">
               {mode === "login"
                 ? "Bem-vindo de volta! Insira seus dados para continuar."
                 : "Crie sua conta e salve seu nome para aparecer no menu."}
@@ -160,8 +160,8 @@ export default function LoginPage() {
             <div
               className={`rounded-lg border px-4 py-3 text-sm flex items-start gap-3 ${
                 msg.type === "error"
-                  ? "bg-red-500/10 border-red-500/20 text-red-400"
-                  : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  ? "bg-danger-subtle border-danger/20 text-danger"
+                  : "bg-success-subtle border-success/20 text-success"
               }`}
             >
               <div className="mt-0.5">{msg.type === "error" ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}</div>
@@ -172,11 +172,11 @@ export default function LoginPage() {
           <form onSubmit={submit} className="space-y-5">
             {mode === "signup" && (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300" htmlFor="name">
+                <label className="text-sm font-medium text-text-muted" htmlFor="name">
                   Nome
                 </label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none">
                     <User size={18} />
                   </div>
                   <input
@@ -186,8 +186,8 @@ export default function LoginPage() {
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Ex: Guilherme Becker"
                     className="
-                      w-full bg-[#18181B] border border-[#27272A] rounded-lg px-10 py-2.5 text-white placeholder:text-slate-600
-                      focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]
+                      w-full bg-surface-1 border border-border rounded-lg px-10 py-2.5 text-text placeholder:text-text-faint
+                      focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
                       transition-all
                     "
                   />
@@ -196,11 +196,11 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300" htmlFor="email">
+              <label className="text-sm font-medium text-text-muted" htmlFor="email">
                 E-mail
               </label>
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none">
                   <Mail size={18} />
                 </div>
                 <input
@@ -210,8 +210,8 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nome@exemplo.com"
                   className="
-                    w-full bg-[#18181B] border border-[#27272A] rounded-lg px-10 py-2.5 text-white placeholder:text-slate-600
-                    focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]
+                    w-full bg-surface-1 border border-border rounded-lg px-10 py-2.5 text-text placeholder:text-text-faint
+                    focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
                     transition-all
                   "
                 />
@@ -220,14 +220,14 @@ export default function LoginPage() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-slate-300" htmlFor="password">
+                <label className="text-sm font-medium text-text-muted" htmlFor="password">
                   Senha
                 </label>
                 {mode === "login" && (
                   <button
                     type="button"
                     onClick={handleResetPass}
-                    className="text-xs text-[#D4AF37] hover:text-[#E8C766] transition-colors"
+                    className="text-xs text-accent hover:text-accent-2 transition-colors"
                   >
                     Esqueceu a senha?
                   </button>
@@ -235,7 +235,7 @@ export default function LoginPage() {
               </div>
 
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none">
                   <Lock size={18} />
                 </div>
                 <input
@@ -245,15 +245,15 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="
-                    w-full bg-[#18181B] border border-[#27272A] rounded-lg px-10 py-2.5 text-white placeholder:text-slate-600
-                    focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 focus:border-[#D4AF37]
+                    w-full bg-surface-1 border border-border rounded-lg px-10 py-2.5 text-text placeholder:text-text-faint
+                    focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent
                     transition-all
                   "
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-faint hover:text-text-muted transition-colors"
                 >
                   {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -267,11 +267,11 @@ export default function LoginPage() {
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
                 className="
-                  w-4 h-4 rounded bg-[#18181B] border-[#27272A] 
-                  text-[#D4AF37] focus:ring-[#D4AF37] focus:ring-offset-0 focus:ring-offset-[#09090B]
+                  w-4 h-4 rounded bg-surface-1 border-border 
+                  text-accent focus:ring-accent focus:ring-offset-0 focus:ring-offset-bg
                 "
               />
-              <label htmlFor="remember" className="text-sm text-slate-400 select-none cursor-pointer">
+              <label htmlFor="remember" className="text-sm text-text-muted select-none cursor-pointer">
                 Lembrar-me neste dispositivo
               </label>
             </div>
@@ -280,12 +280,12 @@ export default function LoginPage() {
               type="submit"
               disabled={loading || !canSubmit}
               className={`
-                w-full py-2.5 rounded-lg font-bold text-[#09090B]
+                w-full py-2.5 rounded-lg font-bold text-accent-fg
                 flex items-center justify-center gap-2
                 transition-all duration-200
                 ${loading || !canSubmit
-                  ? "bg-[#D4AF37]/50 cursor-not-allowed"
-                  : "bg-[#D4AF37] hover:bg-[#B5952F] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)]"
+                  ? "bg-accent/50 cursor-not-allowed"
+                  : "bg-accent hover:bg-accent-2 hover:shadow-glow-accent"
                 }
               `}
             >
@@ -296,10 +296,10 @@ export default function LoginPage() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-[#27272A]" />
+              <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#09090B] px-2 text-slate-500">ou continue com</span>
+              <span className="bg-bg px-2 text-text-faint">ou continue com</span>
             </div>
           </div>
 
@@ -308,9 +308,9 @@ export default function LoginPage() {
             onClick={handleGoogle}
             disabled={loading}
             className="
-              w-full py-2.5 rounded-lg font-medium text-slate-300
-              bg-[#18181B] border border-[#27272A]
-              hover:bg-[#27272A] hover:text-white
+              w-full py-2.5 rounded-lg font-medium text-text-muted
+              bg-surface-1 border border-border
+              hover:bg-surface-2 hover:text-text
               flex items-center justify-center gap-3
               transition-all
             "
@@ -319,13 +319,13 @@ export default function LoginPage() {
             Google
           </button>
 
-          <p className="text-center text-xs text-slate-500 pt-4">
+          <p className="text-center text-xs text-text-faint pt-4">
             Ao clicar em continuar, você concorda com nossos{" "}
-            <a href="#" className="underline hover:text-slate-400">
+            <a href="#" className="underline hover:text-text-muted">
               Termos de Serviço
             </a>{" "}
             e{" "}
-            <a href="#" className="underline hover:text-slate-400">
+            <a href="#" className="underline hover:text-text-muted">
               Política de Privacidade
             </a>
             .

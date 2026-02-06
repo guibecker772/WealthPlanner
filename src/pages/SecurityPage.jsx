@@ -65,7 +65,7 @@ export default function SecurityPage() {
       setCurrentPass("");
       setNewPass("");
       setConfirmPass("");
-    } catch (e) {
+    } catch (_e) {
       setMsg({
         type: "error",
         text: "Não foi possível atualizar. Verifique a senha atual e tente novamente (ou faça login novamente).",
@@ -86,7 +86,7 @@ export default function SecurityPage() {
     try {
       await sendPasswordResetEmail(auth, user.email);
       setMsg({ type: "success", text: "E-mail de redefinição enviado. Verifique sua caixa de entrada." });
-    } catch (e) {
+    } catch (_e) {
       setMsg({ type: "error", text: "Não foi possível enviar o e-mail agora. Tente novamente." });
     } finally {
       setSaving(false);

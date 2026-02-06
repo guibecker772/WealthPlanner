@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
 
 export default function ClientUnifiedReportPDF({
   clientData,
-  kpis,
+  kpis: _kpis,
   succession,
   config,
   incomeInsuranceBase = "now", // "now" | "retirement"

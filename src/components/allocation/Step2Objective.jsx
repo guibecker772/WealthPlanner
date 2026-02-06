@@ -1,6 +1,6 @@
 // src/components/allocation/Step2Objective.jsx
 // Passo 2: "Seu objetivo (escolha 1)"
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Target,
   TrendingUp,
@@ -12,8 +12,7 @@ import {
 } from "lucide-react";
 
 import Card from "../ui/Card";
-import { PROFILE_LIMITS, SOFT_CONSTRAINTS, validateSoftConstraints } from "../../utils/allocationMath";
-import { formatPercent } from "../../utils/format";
+import { PROFILE_LIMITS } from "../../utils/allocationMath";
 
 export default function Step2Objective({
   allocationGuide,
@@ -95,8 +94,8 @@ export default function Step2Objective({
     }
   }, [localTargetStr, currentMode, allocationGuide, objective, updateAllocationGuide, readOnly]);
 
-  // Limites do perfil atual
-  const profileLimits = PROFILE_LIMITS[currentProfile] || PROFILE_LIMITS.moderado;
+  // Limites do perfil atual (usado para validação futura)
+  const _profileLimits = PROFILE_LIMITS[currentProfile] || PROFILE_LIMITS.moderado;
 
   return (
     <div className="space-y-6 animate-fade-in">

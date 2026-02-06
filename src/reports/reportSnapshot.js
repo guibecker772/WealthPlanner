@@ -2,7 +2,7 @@
 // Camada de "Fonte Única de Verdade" para geração de PDF
 // Extrai e normaliza dados do mesmo output do Engine que a UI usa
 
-import { convertToBRL, getEffectiveFxRate, calculateFxExposure, DEFAULT_FX_RATES } from "../utils/fx";
+import { getEffectiveFxRate, calculateFxExposure, DEFAULT_FX_RATES } from "../utils/fx";
 import { ASSET_TYPES } from "../constants/assetTypes";
 import FinancialEngine from "../engine/FinancialEngine";
 import { calculateAlternativeScenarios } from "../utils/simulationModes";

@@ -20,7 +20,7 @@ import {
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
-import { formatCurrencyBR, formatCurrencyWithCode, getCurrencySymbol, safeNumber } from "../utils/format";
+import { formatCurrencyBR, getCurrencySymbol, safeNumber } from "../utils/format";
 import { convertToBRL, calculateFxExposure, DEFAULT_FX_RATES, validateAssetFx } from "../utils/fx";
 import { 
   CURRENCIES, 
@@ -70,7 +70,7 @@ function normalizeCurrencyValue(v) {
 
 // ✅ Componente de Input de Valor com Formatação BRL
 // Exibe formatado quando não está em foco, permite digitação livre quando em foco
-function CurrencyValueInput({ value, onChange, currency = "BRL", disabled = false, className = "" }) {
+function CurrencyValueInput({ value, onChange, currency: _currency = "BRL", disabled = false, className = "" }) {
   const [isFocused, setIsFocused] = useState(false);
   const [localValue, setLocalValue] = useState("");
 
@@ -137,7 +137,7 @@ function FinancialPortfolioDetailsPanel({
 
   // Determinar qual breakdown usar e quais classes
   const isBR = detailMode === 'BR';
-  const isIntl = detailMode === 'INTL';
+  const _isIntl = detailMode === 'INTL';
   const breakdownKey = isBR ? 'breakdown' : 'intlBreakdown';
   const classes = isBR ? PORTFOLIO_CLASSES_BR : PORTFOLIO_CLASSES_INTL;
   const currentBreakdown = details[breakdownKey] || {};
@@ -475,7 +475,7 @@ export default function AssetsPage() {
     return valOrEvent;
   };
 
-  const updateFxRate = (key, val) => {
+  const _updateFxRate = (key, val) => {
     const rawVal = normalizeInputValue(val);
     // Permitir string vazia durante digitação
     if (rawVal === '' || rawVal === null || rawVal === undefined) {
@@ -489,7 +489,7 @@ export default function AssetsPage() {
   };
 
   // Calcular totais com conversão FX (apenas investíveis: financial + previdencia)
-  const { totalBRL, byCurrency, percentages, internationalBRL, internationalPct } = useMemo(
+  const { totalBRL, byCurrency, percentages, internationalBRL: _internationalBRL, internationalPct } = useMemo(
     () => calculateFxExposure(assets, scenarioFx),
     [assets, scenarioFx]
   );
@@ -510,7 +510,7 @@ export default function AssetsPage() {
   }, [assets, scenarioFx]);
 
   // Separar ativos por categoria
-  const groupedAssets = useMemo(() => {
+  const _groupedAssets = useMemo(() => {
     const groups = {
       financial: [],
       previdencia: [],
@@ -707,7 +707,7 @@ export default function AssetsPage() {
             assets.map((asset) => {
               const Icon = TYPE_ICONS[asset.type] || Box;
               const currency = asset.currency || "BRL";
-              const currencySymbol = CURRENCIES.find((c) => c.value === currency)?.symbol || "R$";
+              const _currencySymbol = CURRENCIES.find((c) => c.value === currency)?.symbol || "R$";
               const valueBRL = convertToBRL(asset, scenarioFx);
               const isPrevidencia = asset.type === "previdencia";
               const isExpanded = expandedAssetId === asset.id;

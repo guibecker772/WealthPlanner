@@ -3,6 +3,153 @@
 /* Imports das novas fontes Inter e Manrope */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
+/* ============================================
+   DESIGN SYSTEM: Private Banking Premium Dark
+   Palette: Slate Navy/Charcoal + Champagne Gold
+   ============================================ */
+
+/* Tokens CSS em HSL para tema escuro premium */
+:root {
+  color-scheme: dark;
+
+  /* ─── Backgrounds (Slate Navy/Charcoal - 222° hue) ─── */
+  --bg: 222 47% 6%;           /* #080B14 - fundo principal profundo */
+  --surface-1: 222 38% 9%;    /* #0F1320 - sidebar/painéis */
+  --surface-2: 222 30% 13%;   /* #171D2C - cards */
+  --surface-3: 222 26% 18%;   /* #232A3C - hover/destaque */
+  --surface-card: 222 28% 12%; /* #151A28 - alias para cards */
+
+  /* ─── Borders & Dividers ─── */
+  --border: 222 18% 22%;             /* #2D3548 - borda visível */
+  --border-highlight: 222 15% 30%;   /* #3D4659 - borda hover */
+  --divider: 222 20% 16%;            /* #1F2534 - separador sutil */
+
+  /* ─── Text ─── */
+  --text: 210 25% 96%;               /* #F3F6FA - branco suave */
+  --text-muted: 215 16% 70%;         /* #A3B1C6 - texto secundário */
+  --text-faint: 215 12% 52%;         /* #778296 - texto terciário */
+  --text-inverted: 222 47% 6%;       /* texto sobre fundos claros */
+
+  /* ─── Accent Champagne Gold (Premium) ─── */
+  --accent: 44 90% 55%;              /* #E9B835 - dourado vibrante */
+  --accent-2: 44 75% 48%;            /* #C99C25 - dourado secundário */
+  --accent-fg: 222 47% 6%;           /* texto sobre accent */
+  --accent-subtle: 44 90% 55% / 0.12; /* dourado 12% alpha para bgs */
+
+  /* ─── Semantic Colors ─── */
+  --success: 152 60% 45%;            /* #2DAB70 - verde mais rico */
+  --success-subtle: 152 60% 45% / 0.12;
+  --warning: 38 90% 55%;             /* #F5A623 - laranja dourado */
+  --warning-subtle: 38 90% 55% / 0.12;
+  --danger: 0 72% 55%;               /* #D94444 - vermelho menos gritante */
+  --danger-subtle: 0 72% 55% / 0.12;
+  --info: 200 80% 55%;               /* #33A8E5 - azul informativo */
+  --info-subtle: 200 80% 55% / 0.12;
+
+  /* ─── Chart Series (paleta harmoniosa) ─── */
+  --chart-1: 44 90% 55%;             /* Gold (accent) - série principal */
+  --chart-2: 200 80% 55%;            /* Blue (info) */
+  --chart-3: 152 60% 45%;            /* Green (success) */
+  --chart-4: 38 90% 55%;             /* Orange (warning) */
+  --chart-5: 280 60% 55%;            /* Purple */
+  --chart-grid: 222 20% 16% / 0.6;   /* Gridlines sutis */
+  --chart-axis: 215 12% 52%;         /* Axis labels */
+
+  /* ─── Shadows ─── */
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.30);
+  --shadow-soft-2: 0 8px 32px -4px rgba(0, 0, 0, 0.40);
+  --shadow-elevated: 0 20px 40px -10px rgba(0, 0, 0, 0.50);
+  --shadow-glow-accent: 0 0 30px -5px rgba(233, 184, 53, 0.20);
+}
+
+/* ─── LIGHT THEME: Premium Paper/Ivory ─── */
+.light {
+  color-scheme: light;
+
+  /* Backgrounds - Warm paper tones */
+  --bg: 40 30% 97%;              /* Ivory paper */
+  --surface-1: 40 40% 99%;       /* Pure cream white */
+  --surface-2: 40 20% 95%;       /* Soft parchment */
+  --surface-3: 40 15% 91%;       /* Warm stone */
+  --surface-card: 40 40% 99%;
+
+  /* Borders - Subtle warm grays */
+  --border: 40 10% 86%;
+  --border-highlight: 40 12% 78%;
+  --divider: 40 10% 92%;
+
+  /* Text - Rich navy/charcoal for contrast */
+  --text: 222 47% 11%;           /* Deep navy */
+  --text-muted: 220 15% 40%;     /* Muted slate */
+  --text-faint: 220 10% 55%;     /* Light slate */
+  --text-inverted: 40 40% 99%;   /* Cream for dark backgrounds */
+
+  /* Accent - Richer gold for light backgrounds */
+  --accent: 43 85% 42%;          /* Darker gold - better contrast */
+  --accent-2: 43 75% 38%;        /* Deep gold */
+  --accent-fg: 40 40% 99%;       /* Cream text on gold */
+  --accent-subtle: 43 85% 42% / 0.10;
+
+  /* Semantic - Adjusted for light bg */
+  --success: 152 65% 32%;        /* Deeper green */
+  --success-subtle: 152 50% 40% / 0.10;
+  --warning: 38 95% 42%;         /* Deeper amber */
+  --warning-subtle: 38 80% 45% / 0.10;
+  --danger: 0 75% 45%;           /* Deeper red */
+  --danger-subtle: 0 65% 50% / 0.10;
+  --info: 200 85% 42%;           /* Deeper blue */
+  --info-subtle: 200 70% 48% / 0.10;
+
+  /* Charts - High contrast for light mode */
+  --chart-1: 43 85% 42%;         /* Gold - primary */
+  --chart-2: 200 85% 42%;        /* Blue - secondary */
+  --chart-3: 152 65% 32%;        /* Green - tertiary */
+  --chart-4: 38 95% 42%;         /* Amber - quaternary */
+  --chart-5: 280 55% 45%;        /* Purple - quinary */
+  --chart-grid: 40 10% 82% / 0.9;
+  --chart-axis: 220 15% 40%;
+
+  /* Shadows - Softer, warmer */
+  --shadow-soft: 0 4px 20px -2px rgba(30, 25, 15, 0.05);
+  --shadow-soft-2: 0 8px 32px -4px rgba(30, 25, 15, 0.08);
+  --shadow-elevated: 0 20px 40px -10px rgba(30, 25, 15, 0.10);
+  --shadow-glow-accent: 0 0 25px -5px rgba(180, 140, 30, 0.15);
+}
+
+/* ─── Client Presentation Mode ─── */
+.client-mode {
+  /* KPIs maiores e mais destacados */
+  --kpi-scale: 1.15;
+  
+  /* Mais espaçamento para respirar */
+  --content-gap: 1.5rem;
+}
+
+/* Esconder elementos administrativos em client mode */
+.client-mode .hide-in-client,
+.client-mode [data-admin="true"] {
+  display: none !important;
+}
+
+/* Botões de ação administrativa - ocultar */
+.client-mode .admin-action {
+  display: none !important;
+}
+
+/* KPIs maiores em client mode */
+.client-mode .kpi-value {
+  font-size: calc(1em * var(--kpi-scale, 1));
+}
+
+/* Mais espaçamento em grids e cards em client mode */
+.client-mode .gap-4 {
+  gap: var(--content-gap);
+}
+
+.client-mode .gap-6 {
+  gap: calc(var(--content-gap) * 1.25);
+}
+
 /* Diretivas do Tailwind CSS */
 @tailwind base;
 @tailwind components;
@@ -13,11 +160,24 @@
   /* Aplica as novas cores e fontes padrão no elemento raiz */
   html {
     scroll-behavior: smooth;
-    @apply bg-background text-text-primary font-sans overflow-hidden h-full;
+    @apply bg-bg text-text font-sans overflow-hidden h-full;
   }
 
   body {
     @apply antialiased h-full;
+  }
+
+  /* Tipografia tabular para números (KPIs, tabelas) */
+  .tabular-nums,
+  .kpi-value,
+  [data-numeric="true"] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" on, "lnum" on;
+  }
+
+  /* Focus ring acessível global */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/40 ring-offset-2 ring-offset-bg;
   }
 }
 

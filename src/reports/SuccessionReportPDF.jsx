@@ -61,7 +61,7 @@ function formatBRL(v) {
 
 export default function SuccessionReportPDF({
   clientData,
-  kpis,
+  kpis: _kpis,
   succession,
   incomeInsuranceBase,
   monthlyBaseCost,

@@ -14,6 +14,25 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Private Wealth</title>
+
+    <!-- Anti-FOUC: Aplica tema ANTES do React carregar -->
+    <script>
+      (function() {
+        try {
+          var pref = localStorage.getItem('theme');
+          if (pref !== 'system' && pref !== 'dark' && pref !== 'light') pref = 'system';
+          var systemIsLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+          var effective = pref === 'system' ? (systemIsLight ? 'light' : 'dark') : pref;
+          document.documentElement.dataset.themePref = pref;
+          document.documentElement.dataset.theme = effective;
+          if (effective === 'light') {
+            document.documentElement.classList.add('light');
+          } else {
+            document.documentElement.classList.remove('light');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

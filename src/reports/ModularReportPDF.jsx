@@ -1304,7 +1304,7 @@ export default function ModularReportPDF({
                   <Text style={[styles.tableCellBold, { flex: 2 }]}>Com Aporte Temporário</Text>
                   <Text style={styles.tableCellBold}>Variável</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>
-                    {contributionTimeline.map((ct, i) => 
+                    {contributionTimeline.map((ct, _i) => 
                       `${formatCurrencyBR(ct.value)}/mês dos ${ct.startAge} aos ${ct.endAge} anos`
                     ).join('; ')}
                   </Text>
@@ -1324,7 +1324,7 @@ export default function ModularReportPDF({
                   <Text style={[styles.tableCellBold, { flex: 2 }]}>Com Entradas Pontuais</Text>
                   <Text style={styles.tableCellBold}>{cashInEvents.length} evento(s)</Text>
                   <Text style={[styles.tableCell, { flex: 2 }]}>
-                    {cashInEvents.slice(0, 3).map((ev, i) => 
+                    {cashInEvents.slice(0, 3).map((ev, _i) => 
                       `${formatCurrencyBR(ev.value)} aos ${ev.age} anos`
                     ).join('; ')}{cashInEvents.length > 3 ? ` (+${cashInEvents.length - 3} mais)` : ''}
                   </Text>

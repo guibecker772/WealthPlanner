@@ -40,7 +40,7 @@ export default function Step3Recommendation({
   mode = "simple",
   // Props opcionais passadas do pai (evita recalcular)
   optimizationResult: externalOptimizationResult,
-  hasValidRecommendation: externalHasValid,
+  hasValidRecommendation: _externalHasValid,
 }) {
   const objective = allocationGuide.objective || {};
   const assumptions = allocationGuide.assumptions || {};
@@ -52,8 +52,8 @@ export default function Step3Recommendation({
     return allocationGuide.portfolios?.find((p) => p.id === selectedPortfolioId) || null;
   }, [allocationGuide.portfolios, selectedPortfolioId]);
 
-  // Diagnóstico da carteira atual
-  const currentDiagnostics = useMemo(() => {
+  // Diagnóstico da carteira atual (calculado para uso futuro)
+  const _currentDiagnostics = useMemo(() => {
     if (!selectedPortfolio?.breakdown) return null;
     return calculatePortfolioDiagnostics(selectedPortfolio.breakdown, assumptions);
   }, [selectedPortfolio, assumptions]);

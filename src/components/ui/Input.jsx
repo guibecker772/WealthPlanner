@@ -1,5 +1,5 @@
 // src/components/ui/Input.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { formatCurrencyBR, safeNumber } from "../../utils/format";
 
 function parseBRNumber(raw) {
@@ -41,11 +41,6 @@ const Input = React.forwardRef(
     const [display, setDisplay] = useState("");
     const [isFocused, setIsFocused] = useState(false);
 
-    // value numérico “confiável”
-    const numericValue = useMemo(() => {
-      if (isCurrency || isNumber) return safeNumber(value, 0);
-      return null;
-    }, [value, isCurrency, isNumber]);
 
     // ✅ IMPORTANTE:
     // Só sincroniza display com value formatado quando NÃO está focado.
@@ -101,7 +96,11 @@ const Input = React.forwardRef(
       // ✅ opcional (recomendado): seleciona tudo ao clicar no campo
       if (isCurrency) {
         requestAnimationFrame(() => {
-          try { e.target.select(); } catch {}
+          try { 
+            e.target.select(); 
+          } catch {
+            // Ignorar erro de seleção em alguns browsers
+          }
         });
       }
 
@@ -112,11 +111,15 @@ const Input = React.forwardRef(
 
     return (
       <div className="w-full space-y-1.5">
-        {label && <label className="block text-sm font-medium text-text-secondary">{label}</label>}
+        {label && (
+          <label className="block text-sm font-medium text-text-muted">
+            {label}
+          </label>
+        )}
 
         <div className="relative group">
           {Icon && (
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-text-muted group-focus-within:text-accent transition-colors">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-text-faint group-focus-within:text-accent transition-colors">
               <Icon className="w-5 h-5" />
             </div>
           )}
@@ -129,13 +132,14 @@ const Input = React.forwardRef(
             disabled={disabled || readOnly}
             className={`
               block w-full rounded-xl
-              bg-surface-muted border border-border
-              text-text-primary placeholder:text-text-muted/70
-              focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50
+              bg-surface-1 border border-border
+              text-text placeholder:text-text-faint/70
+              focus:outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/30
+              focus-visible:ring-2 focus-visible:ring-accent/40
               transition-all duration-200
               ${Icon ? "pl-12 pr-4" : "px-4"} py-3
-              ${disabled || readOnly ? "opacity-80 cursor-not-allowed" : ""}
-              ${error ? "!border-danger focus:!border-danger focus:!ring-danger/50" : ""}
+              ${disabled || readOnly ? "opacity-60 cursor-not-allowed" : ""}
+              ${error ? "!border-danger/60 focus:!border-danger focus:!ring-danger/30" : ""}
               ${className}
             `}
             onChange={handleChange}

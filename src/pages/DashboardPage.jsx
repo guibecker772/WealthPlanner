@@ -30,6 +30,7 @@ import {
 import { CONFIG } from "../constants/config";
 import Card from "../components/ui/Card";
 import { useToast } from "../components/ui/Toast";
+import { useTheme } from "../theme/useTheme";
 
 import FinancialEngine from "../engine/FinancialEngine";
 import TrackingEngine from "../engine/TrackingEngine";
@@ -95,17 +96,17 @@ function safeNum(v, fallback = 0) {
 }
 
 // -------------------------
-// Tooltip custom - Mostra todas as séries comparativas
+// Tooltip custom - Premium design com tokens
 // -------------------------
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload.length) return null;
 
-  // Séries principais com cores customizadas
+  // Séries principais com cores tokenizadas (CSS vars convertidas para valores)
   const seriesConfig = {
-    wealthOriginal: { label: "Plano original", color: "#D4AF37", order: 1 },
-    wealthAdjusted: { label: "Plano atualizado", color: "#60a5fa", order: 2 },
-    wealthConsumption: { label: "Consumo Total", color: "#f59e0b", order: 3 },
-    wealthPreservation: { label: "Preservação", color: "#10b981", order: 4 },
+    wealthOriginal: { label: "Plano original", colorClass: "bg-chart-1", order: 1 },
+    wealthAdjusted: { label: "Plano atualizado", colorClass: "bg-chart-2", order: 2 },
+    wealthConsumption: { label: "Consumo Total", colorClass: "bg-chart-4", order: 3 },
+    wealthPreservation: { label: "Preservação", colorClass: "bg-chart-3", order: 4 },
   };
 
   // Filtra e ordena as séries de patrimônio (exclui chartCashIn para exibir separadamente)
@@ -116,8 +117,8 @@ const CustomTooltip = ({ active, payload, label }) => {
   const cashIn = payload.find((p) => p.dataKey === "chartCashIn");
 
   return (
-    <div className="bg-surface-highlight/95 border border-accent/20 p-4 rounded-xl shadow-glass backdrop-blur-md relative z-50 min-w-[220px]">
-      <p className="text-text-secondary text-sm mb-3 font-medium">Aos {label} anos</p>
+    <div className="bg-surface-2 border border-border p-4 rounded-xl shadow-elevated backdrop-blur-md relative z-50 min-w-[220px]">
+      <p className="text-text-muted text-sm mb-3 font-medium">Aos {label} anos</p>
 
       {/* Séries de patrimônio */}
       <div className="space-y-2">
@@ -128,15 +129,12 @@ const CustomTooltip = ({ active, payload, label }) => {
           return (
             <div key={series.dataKey} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <span 
-                  className="w-3 h-[3px] rounded-full" 
-                  style={{ backgroundColor: config?.color || series.stroke || "#D4AF37" }}
-                />
-                <span className="text-xs text-text-secondary font-medium">
+                <span className={`w-3 h-[3px] rounded-full ${config?.colorClass || "bg-accent"}`} />
+                <span className="text-xs text-text-muted font-medium">
                   {config?.label || series.name || series.dataKey}
                 </span>
               </div>
-              <span className="text-sm font-display font-bold text-text-primary">
+              <span className="text-sm font-display font-bold text-text tabular-nums">
                 {value != null && Number.isFinite(value) ? formatCurrencyBR(value) : "—"}
               </span>
             </div>
@@ -146,10 +144,10 @@ const CustomTooltip = ({ active, payload, label }) => {
 
       {/* Aporte extraordinário */}
       {cashIn && cashIn.value > 0 && (
-        <div className="mt-3 pt-3 border-t border-border">
+        <div className="mt-3 pt-3 border-t border-divider">
           <div className="flex items-center justify-between gap-4">
             <span className="text-xs text-success font-medium">Aporte extraordinário</span>
-            <span className="text-sm font-display font-bold text-success">
+            <span className="text-sm font-display font-bold text-success tabular-nums">
               + {formatCurrencyBR(cashIn.value)}
             </span>
           </div>
@@ -330,7 +328,7 @@ function readContributionRules(clientData) {
 // -------------------------
 // Gráfico
 // -------------------------
-function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted, extraSeries = [], baselineWealthBRL = 0 }) {
+function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted, extraSeries = [], baselineWealthBRL = 0, theme = 'dark' }) {
   const allGoals = (clientData?.financialGoals || []).filter((g) => (g?.value || 0) > 0);
 
   const nowAge = Number(clientData?.currentAge ?? clientData?.idadeAtual);
@@ -436,11 +434,16 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
   
   const yDomainMax = Math.max(maxCashIn, maxO, maxA, maxExtra) * 1.1;
 
-  const accentColor = "#D4AF37";
-  const adjustedColor = "#60a5fa";
-  const successColor = "#10b981";
-  const gridColor = "rgba(255,255,255,0.05)";
-  const axisTextColor = "#9CA3AF";
+  // Cores tokenizadas para charts (adaptadas ao tema)
+  // Dark: cores mais claras para bom contraste em fundo escuro
+  // Light: cores mais escuras para bom contraste em fundo claro
+  const isLight = theme === 'light';
+  
+  const accentColor = isLight ? "#B8860B" : "#E9B835";   // Gold (darker in light)
+  const adjustedColor = isLight ? "#1E6FA6" : "#33A8E5"; // Blue (darker in light)
+  const successColor = isLight ? "#1E7A4D" : "#2DAB70";  // Green (darker in light)
+  const gridColor = isLight ? "rgba(40, 30, 15, 0.12)" : "rgba(31, 37, 52, 0.6)";
+  const axisTextColor = isLight ? "#5C6370" : "#778296";
 
   const cashInEvents = (clientData?.cashInEvents || []).filter(
     (e) => e?.enabled !== false && e?.age && Number(e.value) > 0
@@ -511,12 +514,12 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
             {Number.isFinite(nowAge) && nowAge >= minAge && nowAge <= maxAge && (
               <ReferenceLine
                 x={nowAge}
-                stroke="rgba(255,255,255,0.35)"
+                stroke="rgba(163, 177, 198, 0.4)"
                 strokeDasharray="4 4"
                 label={{
                   value: "Agora",
                   position: "top",
-                  fill: "rgba(255,255,255,0.55)",
+                  fill: "rgba(163, 177, 198, 0.7)",
                   fontSize: 11,
                   fontWeight: 700,
                   fontFamily: "Inter",
@@ -585,12 +588,12 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
 
             <ReferenceLine
               x={contributionEndAge}
-              stroke="#f97316"
+              stroke="#F5A623"
               strokeDasharray="3 3"
               label={{
                 value: "Fim aportes",
                 position: "insideTopLeft",
-                fill: "#f97316",
+                fill: "#F5A623",
                 fontSize: 11,
                 fontWeight: 700,
                 angle: -90,
@@ -613,19 +616,19 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
                   y={y}
                   r={7}
                   fill={successColor}
-                  stroke="#ffffff"
+                  stroke="#F3F6FA"
                   strokeWidth={2}
                 />
               );
             })}
 
             {allGoals.map((g) => (
-              <ReferenceLine key={g.id} x={g.age} stroke="#f43f5e" strokeDasharray="3 3" strokeOpacity={0.6}>
+              <ReferenceLine key={g.id} x={g.age} stroke="#D94444" strokeDasharray="3 3" strokeOpacity={0.6}>
                 <Label
                   value={g.name}
                   position="insideTop"
                   angle={-90}
-                  fill="#f43f5e"
+                  fill="#D94444"
                   fontSize={10}
                   offset={20}
                   fontFamily="Inter"
@@ -653,6 +656,9 @@ function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, show
 // KPI Card
 // -------------------------
 function StyledKPICard({ label, value, subtext, icon: Icon, isHero }) {
+  // Validar se Icon é um componente válido (function ou object para memo/forwardRef)
+  const canRenderIcon = Icon && (typeof Icon === "function" || typeof Icon === "object");
+  
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border p-6 transition-all duration-200 ${
@@ -666,9 +672,11 @@ function StyledKPICard({ label, value, subtext, icon: Icon, isHero }) {
       )}
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-sm font-bold text-accent uppercase tracking-wider">{label}</h4>
-        <div className={`p-2 rounded-lg ${isHero ? "bg-accent/20 text-accent" : "bg-surface-highlight text-text-secondary"}`}>
-          <Icon size={20} />
-        </div>
+        {canRenderIcon && (
+          <div className={`p-2 rounded-lg ${isHero ? "bg-accent/20 text-accent" : "bg-surface-highlight text-text-secondary"}`}>
+            <Icon size={20} aria-hidden="true" />
+          </div>
+        )}
       </div>
       <div className="font-display text-3xl lg:text-4xl font-bold text-text-primary tracking-tight">{value}</div>
       <p className="text-sm text-text-secondary mt-2 font-medium">{subtext}</p>
@@ -693,6 +701,9 @@ export default function DashboardPage() {
     setTrackingByScenario = null,
     updateField = null,
   } = ctx;
+
+  // Theme hook for chart colors
+  const { effectiveTheme } = useTheme();
 
   // Toast hook - must be called unconditionally
   const { showToast } = useToast();
@@ -1350,6 +1361,7 @@ const seriesAdjusted = showTracking
             showAdjusted={showTracking}
             extraSeries={showTracking ? [] : alternativeExtraSeries}
             baselineWealthBRL={engineOutput?.kpis?.baselineWealthBRL ?? 0}
+            theme={effectiveTheme}
           />
         </Card>
 

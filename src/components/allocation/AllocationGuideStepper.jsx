@@ -28,7 +28,7 @@ export default function AllocationGuideStepper({
   step1Complete = false,
   step2Complete = false,
   onStepClick,
-  readOnly = false,
+  readOnly: _readOnly = false,
 }) {
   const getStepState = (stepNum) => {
     if (stepNum === 1) {

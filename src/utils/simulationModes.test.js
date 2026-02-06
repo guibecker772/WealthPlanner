@@ -376,6 +376,7 @@ describe("simulationModes - Depletion tracking (zeroedAtAge)", () => {
   });
 
   describe("calculateAlternativeScenarios - toggle ON com impactGoals", () => {
+    // eslint-disable-next-line no-unused-vars
     const createClientData = () => ({
       currentAge: 30,
       retirementAge: 60,

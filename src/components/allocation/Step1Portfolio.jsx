@@ -25,12 +25,12 @@ import {
   createImportedPortfolio,
   createDefaultPortfolio,
 } from "../../utils/allocationMath";
-import { formatCurrencyBR, formatPercent } from "../../utils/format";
+import { formatCurrencyBR } from "../../utils/format";
 
 // Parse seguro de número em formato pt-BR
 function safeParsePtBrNumber(str) {
   if (str === null || str === undefined || str === '') return null;
-  const cleaned = String(str).replace(/[^\d,.\-]/g, '');
+  const cleaned = String(str).replace(/[^\d,.-]/g, '');
   const normalized = cleaned.replace(/\./g, '').replace(',', '.');
   const parsed = parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : null;

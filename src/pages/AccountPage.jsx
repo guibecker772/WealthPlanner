@@ -32,7 +32,7 @@ export default function AccountPage() {
       await updateProfile(current, { displayName: trimmed });
       await refreshUser?.();
       setMsg({ type: "success", text: "Nome atualizado com sucesso!" });
-    } catch (e) {
+    } catch (_e) {
       setMsg({ type: "error", text: "Não foi possível atualizar o nome agora. Tente novamente." });
     } finally {
       setSaving(false);

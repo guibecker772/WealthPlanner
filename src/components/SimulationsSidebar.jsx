@@ -147,7 +147,7 @@ export default function SimulationsSidebar({
       </div>
 
       <div className="p-2 overflow-auto">
-        {simulations.map((s, idx) => {
+        {simulations.map((s) => {
           const activeRow = s.id === activeId;
           
           // MODO PRIVACIDADE: não renderizar dados sensíveis no DOM

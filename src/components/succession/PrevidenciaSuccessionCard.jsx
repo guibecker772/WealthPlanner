@@ -1,5 +1,5 @@
 // src/components/succession/PrevidenciaSuccessionCard.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { ScrollText, AlertCircle, Info, ToggleLeft, ToggleRight } from "lucide-react";
 
 import Card from "../ui/Card";

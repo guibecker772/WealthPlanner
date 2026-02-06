@@ -61,7 +61,7 @@ import {
   SOFT_CONSTRAINTS,
   validateSoftConstraints,
 } from "../utils/allocationMath";
-import { formatCurrencyBR, formatPercent, safeNumber } from "../utils/format";
+import { formatCurrencyBR, formatPercent } from "../utils/format";
 import { 
   generateAllocationGuideCSV, 
   downloadCSV, 
@@ -88,7 +88,7 @@ const ASSET_CLASS_DESCRIPTIONS = {
 function safeParsePtBrNumber(str) {
   if (str === null || str === undefined || str === '') return null;
   // Remove tudo exceto dígitos, vírgula, ponto e sinal negativo
-  const cleaned = String(str).replace(/[^\d,.\-]/g, '');
+  const cleaned = String(str).replace(/[^\d,.-]/g, '');
   // pt-BR: "1.234,56" → remove pontos (milhares), troca vírgula por ponto
   const normalized = cleaned.replace(/\./g, '').replace(',', '.');
   const parsed = parseFloat(normalized);
@@ -103,6 +103,7 @@ function safeFormatPercent(n, decimals = 1) {
 }
 
 // Formata porcentagem para exibição (retorna "—" se não calculável)
+// eslint-disable-next-line no-unused-vars
 function safeDisplayPercent(n, decimals = 1) {
   const val = Number(n);
   if (!Number.isFinite(val) || isNaN(val)) return '—';
@@ -1618,7 +1619,7 @@ export default function AllocationGuidePage() {
                             <Zap size={16} />
                             Sugestões de Ajuste
                           </p>
-                          {suggestions.map((sug, idx) => (
+                          {suggestions.map((sug, _idx) => (
                             <div key={sug.id} className="p-4 rounded-xl bg-surface-muted border border-border">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1">
@@ -2027,7 +2028,7 @@ export default function AllocationGuidePage() {
                           value={formatPercent((allocationGuide.assumptions?.inflationAnnual || 0.05) * 100, { decimals: 1, showSymbol: false })}
                           onChange={(e) => {
                             if (readOnly) return;
-                            const raw = e.target.value.replace(/[^\d,.\-]/g, "").replace(",", ".");
+                            const raw = e.target.value.replace(/[^\d,.-]/g, "").replace(",", ".");
                             const parsed = parseFloat(raw);
                             if (!isNaN(parsed)) {
                               const updated = {
@@ -2088,7 +2089,7 @@ export default function AllocationGuidePage() {
                                   value={formatPercent(currentVal, { decimals: 1, showSymbol: false })}
                                   onChange={(e) => {
                                     if (readOnly) return;
-                                    const raw = e.target.value.replace(/[^\d,.\-]/g, "").replace(",", ".");
+                                    const raw = e.target.value.replace(/[^\d,.-]/g, "").replace(",", ".");
                                     const parsed = parseFloat(raw);
                                     if (!isNaN(parsed)) {
                                       const updated = {
@@ -2136,7 +2137,7 @@ export default function AllocationGuidePage() {
                                   value={formatPercent(currentVal, { decimals: 1, showSymbol: false })}
                                   onChange={(e) => {
                                     if (readOnly) return;
-                                    const raw = e.target.value.replace(/[^\d,.\-]/g, "").replace(",", ".");
+                                    const raw = e.target.value.replace(/[^\d,.-]/g, "").replace(",", ".");
                                     const parsed = parseFloat(raw);
                                     if (!isNaN(parsed)) {
                                       const updated = {
