@@ -1,4 +1,8 @@
 // src/context/AuthContext.jsx
+// ⚠️ DEPRECATED - NÃO USAR ESTE ARQUIVO!
+// Use src/auth/AuthContext.jsx que é o provider oficial configurado em main.jsx
+// Este arquivo será removido em versão futura.
+
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
   onAuthStateChanged,

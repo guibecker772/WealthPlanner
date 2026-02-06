@@ -3,7 +3,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 
 import Card from "../components/Card";
 import InputField from "../components/InputField";
-import { useAuth } from "../context/AuthContext.jsx";
+import { useAuth } from "./AuthContext";
 
 export default function AuthScreen() {
   const { login, loginGoogle, register } = useAuth();

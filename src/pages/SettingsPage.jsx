@@ -211,14 +211,16 @@ export default function SettingsPage() {
           {/* Card: Dados do Cliente */}
           <Card title="Dados do Cliente" icon={User}>
             <div className="grid grid-cols-1 gap-5 relative z-10">
-              <InputField
-                label="Nome do Cliente"
-                value={clientData.name}
-                onChange={(v) => handleUpdate("name", v)}
-                type="text"
-                readOnly={readOnly}
-                placeholder="Ex: João Silva"
-              />
+              <div data-guide="client-name">
+                <InputField
+                  label="Nome do Cliente"
+                  value={clientData.name}
+                  onChange={(v) => handleUpdate("name", v)}
+                  type="text"
+                  readOnly={readOnly}
+                  placeholder="Ex: João Silva"
+                />
+              </div>
               <InputField
                 label="Nome do Cenário"
                 value={clientData.scenarioName}
@@ -302,78 +304,81 @@ export default function SettingsPage() {
           </Card>
 
           {/* Card: Aportes & Renda */}
-          <Card title="Aportes & Renda do Plano" icon={AlertTriangle}>
-            <div className="grid grid-cols-1 gap-5 relative z-10">
-              {/* Aporte Mensal Base - com formatação BRL visual */}
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-                  Aporte Mensal Base (R$)
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={localMonthlyContribution}
-                  onChange={(e) => setLocalMonthlyContribution(e.target.value)}
-                  onBlur={() => handleMoneyBlur('monthlyContribution', localMonthlyContribution, setLocalMonthlyContribution, clientData.monthlyContribution)}
-                  onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                  disabled={readOnly}
-                  placeholder="R$ 3.000,00"
-                  className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
-                />
-              </div>
-
-              {/* Renda/Custo desejado na Aposentadoria - com formatação BRL visual */}
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-                  Renda/Custo desejado na Aposentadoria (R$/mês)
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={localMonthlyCostRetirement}
-                  onChange={(e) => setLocalMonthlyCostRetirement(e.target.value)}
-                  onBlur={() => handleMoneyBlur('monthlyCostRetirement', localMonthlyCostRetirement, setLocalMonthlyCostRetirement, clientData.monthlyCostRetirement)}
-                  onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                  disabled={readOnly}
-                  placeholder="R$ 15.000,00"
-                  className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
-                />
-              </div>
-
-              {/* Custo de Vida Atual - com formatação BRL visual */}
-              <div>
-                <label className="block text-xs font-semibold text-text-secondary mb-1.5">
-                  Custo de Vida Atual (R$/mês) — opcional
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={localMonthlyCostCurrent}
-                  onChange={(e) => setLocalMonthlyCostCurrent(e.target.value)}
-                  onBlur={() => handleMoneyBlur('monthlyCostCurrent', localMonthlyCostCurrent, setLocalMonthlyCostCurrent, clientData.monthlyCostCurrent)}
-                  onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
-                  disabled={readOnly}
-                  placeholder="R$ 12.000,00"
-                  className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
-                />
-              </div>
-
-              {!readOnly && !hasRetirementIncome && (
-                <div className="mt-2 p-3 bg-danger/10 rounded-lg border border-danger/25 flex gap-3 items-start">
-                  <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
-                  <p className="text-xs text-danger/90 leading-relaxed">
-                    <b>Atenção:</b> sem preencher a{" "}
-                    <b>renda/custo desejado na aposentadoria</b>, a{" "}
-                    <b>cobertura da meta</b> ficará em <b>0%</b>.
-                  </p>
+          <div data-guide="costs">
+            <Card title="Aportes & Renda do Plano" icon={AlertTriangle}>
+              <div className="grid grid-cols-1 gap-5 relative z-10">
+                {/* Aporte Mensal Base - com formatação BRL visual */}
+                <div data-guide="contribution">
+                  <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                    Aporte Mensal Base (R$)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={localMonthlyContribution}
+                    onChange={(e) => setLocalMonthlyContribution(e.target.value)}
+                    onBlur={() => handleMoneyBlur('monthlyContribution', localMonthlyContribution, setLocalMonthlyContribution, clientData.monthlyContribution)}
+                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+                    disabled={readOnly}
+                    placeholder="R$ 3.000,00"
+                    className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
+                  />
                 </div>
-              )}
-            </div>
-          </Card>
+
+                {/* Renda/Custo desejado na Aposentadoria - com formatação BRL visual */}
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                    Renda/Custo desejado na Aposentadoria (R$/mês)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={localMonthlyCostRetirement}
+                    onChange={(e) => setLocalMonthlyCostRetirement(e.target.value)}
+                    onBlur={() => handleMoneyBlur('monthlyCostRetirement', localMonthlyCostRetirement, setLocalMonthlyCostRetirement, clientData.monthlyCostRetirement)}
+                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+                    disabled={readOnly}
+                    placeholder="R$ 15.000,00"
+                    className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
+                  />
+                </div>
+
+                {/* Custo de Vida Atual - com formatação BRL visual */}
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                    Custo de Vida Atual (R$/mês) — opcional
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={localMonthlyCostCurrent}
+                    onChange={(e) => setLocalMonthlyCostCurrent(e.target.value)}
+                    onBlur={() => handleMoneyBlur('monthlyCostCurrent', localMonthlyCostCurrent, setLocalMonthlyCostCurrent, clientData.monthlyCostCurrent)}
+                    onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+                    disabled={readOnly}
+                    placeholder="R$ 12.000,00"
+                    className="w-full rounded-xl bg-surface-muted border border-border text-text-primary placeholder:text-text-muted/70 focus:outline-none focus:border-accent/70 focus:ring-1 focus:ring-accent/50 transition-all duration-200 px-4 py-3 disabled:opacity-60"
+                  />
+                </div>
+
+                {!readOnly && !hasRetirementIncome && (
+                  <div className="mt-2 p-3 bg-danger/10 rounded-lg border border-danger/25 flex gap-3 items-start">
+                    <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
+                    <p className="text-xs text-danger/90 leading-relaxed">
+                      <b>Atenção:</b> sem preencher a{" "}
+                      <b>renda/custo desejado na aposentadoria</b>, a{" "}
+                      <b>cobertura da meta</b> ficará em <b>0%</b>.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
 
           {/* Card: Horizonte Temporal */}
-          <Card title="Horizonte Temporal" icon={Calendar}>
-            <div className="grid grid-cols-2 gap-5 relative z-10">
+          <div data-guide="ages">
+            <Card title="Horizonte Temporal" icon={Calendar}>
+              <div className="grid grid-cols-2 gap-5 relative z-10">
               <InputField
                 label="Idade Atual"
                 type="number"
@@ -423,7 +428,8 @@ export default function SettingsPage() {
                 <b>{clientData.lifeExpectancy || 90}</b> anos.
               </p>
             </div>
-          </Card>
+            </Card>
+          </div>
         </div>
 
         {/* --- COLUNA DA DIREITA --- */}

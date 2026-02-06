@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  PackageOpen,
 } from "lucide-react";
 
 import Card from "../components/ui/Card";
@@ -344,6 +345,20 @@ export default function AssetsPage() {
     setExpandedAssetId(newAsset.id);
   };
 
+  // ✅ Adiciona ativo de imóvel (para onboarding empty state)
+  const addRealEstateAsset = () => {
+    const newAsset = {
+      id: Date.now().toString(),
+      name: "Novo Imóvel",
+      value: "",
+      amountCurrency: "",
+      currency: "BRL",
+      fxRate: null,
+      type: "real_estate",
+    };
+    updateField("assets", [...assets, newAsset]);
+  };
+
   const removeAsset = (id) => {
     updateField("assets", assets.filter((a) => a.id !== id));
   };
@@ -532,6 +547,63 @@ export default function AssetsPage() {
     }
     return warnings;
   }, [assets, scenarioFx]);
+
+  // ✅ Empty State quando não há ativos
+  if (assets.length === 0) {
+    return (
+      <div className="animate-fade-in font-sans">
+        <div className="max-w-xl mx-auto p-8 rounded-2xl border border-border bg-background-secondary/60 backdrop-blur-sm text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-accent/10 flex items-center justify-center">
+            <PackageOpen size={32} className="text-accent" />
+          </div>
+          <h2 className="text-xl font-display font-bold text-text-primary mb-2">
+            Nenhum ativo cadastrado
+          </h2>
+          <p className="text-text-secondary text-sm mb-6 leading-relaxed">
+            Para calcular o plano financeiro, adicione pelo menos 1 ativo.
+            Pode ser uma carteira de investimentos, imóvel ou previdência privada.
+          </p>
+
+          {!readOnly && (
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                type="button"
+                onClick={addAsset}
+                data-guide="add-asset"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-accent to-accent-dark text-background font-bold text-sm shadow-lg shadow-accent/30 hover:shadow-accent/50 hover:scale-[1.02] transition-all"
+              >
+                <Wallet size={18} />
+                Adicionar carteira
+              </button>
+              <button
+                type="button"
+                onClick={addRealEstateAsset}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-border text-text-secondary font-semibold text-sm hover:bg-surface-highlight hover:text-text-primary transition-all"
+              >
+                <Building2 size={18} />
+                Adicionar imóvel
+              </button>
+              <button
+                type="button"
+                onClick={addPrevidenciaAsset}
+                data-guide="add-previdencia"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-border text-text-secondary font-semibold text-sm hover:bg-surface-highlight hover:text-text-primary transition-all"
+              >
+                <ScrollText size={18} />
+                Adicionar previdência
+              </button>
+            </div>
+          )}
+
+          {readOnly && (
+            <p className="text-xs text-text-muted italic">
+              Modo visualização — edição desabilitada.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in items-start font-sans">

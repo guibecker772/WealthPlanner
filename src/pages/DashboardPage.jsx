@@ -51,6 +51,7 @@ import AlternativeScenariosSection, {
   useAlternativeScenariosSeries,
 } from "../components/scenarios/AlternativeScenariosSection";
 import ReportBuilderModal from "../components/reports/ReportBuilderModal";
+import OnboardingChecklist, { getCompleteness } from "../components/OnboardingChecklist";
 
 // -------------------------
 // Helpers
@@ -685,6 +686,7 @@ export default function DashboardPage() {
     analysis,
     isStressTest,
     viewMode,
+    readOnly = false,
     // aiEnabled - reserved for future AI features
     scenarioId = null,
     trackingByScenario = null,
@@ -930,8 +932,24 @@ const seriesAdjusted = showTracking
     };
   }, [showTracking, tracking, kpisNormalized]);
 
+  // ✅ Verifica se há pendências obrigatórias para mostrar checklist
+  const hasRequiredPending = useMemo(() => {
+    const { items } = getCompleteness(clientData, clientData?.assets, clientData?.financialGoals);
+    return items.some((i) => !i.done);
+  }, [clientData]);
+
   return (
     <div className="space-y-8 animate-fade-in font-sans">
+      {/* Checklist de Progresso - aparece somente com pendências obrigatórias */}
+      {hasRequiredPending && (
+        <OnboardingChecklist
+          clientData={clientData}
+          assets={clientData?.assets}
+          financialGoals={clientData?.financialGoals}
+          readOnly={readOnly}
+        />
+      )}
+
       {isStressTest && (
         <div className="p-4 rounded-2xl border border-danger/30 bg-danger-subtle/30 backdrop-blur-md flex items-start gap-4 shadow-sm">
           <div className="p-2 bg-danger/20 rounded-lg text-danger mt-1">
@@ -977,6 +995,7 @@ const seriesAdjusted = showTracking
             onClick={() => setIsReportModalOpen(true)}
             className="px-4 py-3 text-sm font-bold flex items-center gap-2 rounded-2xl border border-border bg-surface/30 text-text-secondary hover:text-text-primary hover:border-accent/50 hover:bg-accent/5 transition"
             title="Gerar Relatório PDF personalizado"
+            data-guide="export-pdf"
           >
             <FileText size={18} />
             <span className="hidden sm:inline">Relatório PDF</span>
@@ -1009,7 +1028,7 @@ const seriesAdjusted = showTracking
 
       <div className="space-y-6">
         {/* KPIs topo + Wealth Score */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6" data-guide="kpis">
           <StyledKPICard
             label="Renda Sustentável"
             value={formatCurrencyBR(displayedTopKpis.sustainableIncome || 0)}

@@ -147,20 +147,22 @@ export function formatPercent(value, opts = {}) {
     // default assume value already in percent (66.67)
     inputIsRatio = false,
     fallback = "0,00%",
+    sign = false, // se true, mostra + para valores positivos
   } = opts;
 
   const n = toNumber(value, NaN);
   if (!Number.isFinite(n)) return fallback;
 
   const pct = inputIsRatio ? n * 100 : n;
+  const signPrefix = sign && pct > 0 ? "+" : "";
 
   try {
-    return `${pct.toLocaleString("pt-BR", {
+    return `${signPrefix}${pct.toLocaleString("pt-BR", {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     })}%`;
   } catch {
-    return `${pct.toFixed(decimals).replace(".", ",")}%`;
+    return `${signPrefix}${pct.toFixed(decimals).replace(".", ",")}%`;
   }
 }
 

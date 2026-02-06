@@ -15,7 +15,8 @@ import ScenariosPage from "../pages/ScenariosPage.jsx";
 import GoalsPage from "../pages/GoalsPage.jsx";
 import SuccessionPage from "../pages/SuccessionPage.jsx";
 import SettingsPage from "../pages/SettingsPage.jsx";
-import AllocationGuidePage from "../pages/AllocationGuidePage.jsx";
+// Usando a nova versão step-by-step do Guia de Alocação
+import AllocationGuidePage from "../pages/AllocationGuidePageV2.jsx";
 
 import AccountPage from "../pages/AccountPage.jsx";
 import SecurityPage from "../pages/SecurityPage.jsx";

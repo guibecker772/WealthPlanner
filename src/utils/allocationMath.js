@@ -46,6 +46,19 @@ export const DEFAULT_VOLS = {
   outros: 0.10,
 };
 
+// DEFAULT_ASSUMPTIONS: estrutura consolidada de premissas por classe
+// Usado pelos componentes de UI para edição de premissas
+export const DEFAULT_ASSUMPTIONS = {
+  cash:     { returnReal: 5.0, volatility: 0.5 },
+  pos:      { returnReal: 6.0, volatility: 2.0 },
+  pre:      { returnReal: 6.5, volatility: 4.0 },
+  ipca:     { returnReal: 7.0, volatility: 5.0 },
+  acoes:    { returnReal: 9.0, volatility: 20.0 },
+  fiis:     { returnReal: 8.0, volatility: 18.0 },
+  exterior: { returnReal: 8.0, volatility: 22.0 },
+  outros:   { returnReal: 5.0, volatility: 10.0 },
+};
+
 // Matriz de correlação simplificada (simétrica)
 export const DEFAULT_CORRELATION = {
   cash:     { cash: 1.0, pos: 0.3, pre: 0.2, ipca: 0.2, acoes: 0.1, fiis: 0.1, exterior: 0.1, outros: 0.2 },
@@ -402,7 +415,10 @@ export function normalizeBreakdownTo100(breakdown) {
  * @returns {object} allocationGuide default
  */
 export function createDefaultAllocationGuide(clientData = {}) {
-  const inflation = clientData?.inflation ?? clientData?.inflacao ?? 0.05;
+  // clientData.inflation está em % (ex: 4.5 para 4.5%)
+  // Converter para decimal (0.045) para uso interno
+  const rawInflation = clientData?.inflation ?? clientData?.inflacao ?? 5;
+  const inflation = Number(String(rawInflation).replace(',', '.')) / 100 || 0.05;
 
   return {
     portfolios: [],

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import Card from "./Card";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../auth/AuthContext";
 
 export default function AuthScreen() {
   const [isRegister, setIsRegister] = useState(false);

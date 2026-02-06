@@ -1,7 +1,7 @@
 // src/pages/GoalsPage.jsx
 import React from "react";
 import { useOutletContext } from "react-router-dom";
-import { Plus, Trash2, Flag, Target, Milestone } from "lucide-react";
+import { Plus, Trash2, Flag, Target, Milestone, Compass } from "lucide-react";
 import { generateUUID } from "../utils/format";
 import InputField from "../components/InputField";
 
@@ -35,12 +35,51 @@ export default function GoalsPage() {
   const updateGoal = (id, key, val) =>
     updateField("financialGoals", goals.map((g) => (g.id === id ? { ...g, [key]: val } : g)));
 
+  // ✅ Empty State quando não há metas
+  if (goals.length === 0) {
+    return (
+      <div className="animate-fade-in font-sans">
+        <div className="max-w-lg mx-auto p-8 rounded-2xl border border-border bg-background-secondary/60 backdrop-blur-sm text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-accent/10 flex items-center justify-center">
+            <Compass size={32} className="text-accent" />
+          </div>
+          <h2 className="text-xl font-display font-bold text-text-primary mb-2">
+            Nenhuma meta cadastrada
+          </h2>
+          <p className="text-text-secondary text-sm mb-6 leading-relaxed">
+            Metas ajudam a simular eventos futuros e objetivos financeiros (opcional).
+            <br />
+            Exemplos: comprar imóvel, viagem, educação dos filhos, etc.
+          </p>
+
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={addGoal}
+              data-guide="add-goal"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent to-accent-dark text-background font-bold text-sm shadow-lg shadow-accent/30 hover:shadow-accent/50 hover:scale-[1.02] transition-all"
+            >
+              <Plus size={18} />
+              Adicionar meta
+            </button>
+          )}
+
+          {readOnly && (
+            <p className="text-xs text-text-muted italic">
+              Modo visualização — edição desabilitada.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-serif text-white tracking-wide">Metas & Objetivos</h2>
         {!readOnly && (
-          <button onClick={addGoal} className="btn-outline py-2 px-4 text-sm flex items-center gap-2 text-slate-200 hover:text-white">
+          <button onClick={addGoal} data-guide="add-goal" className="btn-outline py-2 px-4 text-sm flex items-center gap-2 text-slate-200 hover:text-white">
             <Plus size={16} /> Adicionar Nova Meta
           </button>
         )}

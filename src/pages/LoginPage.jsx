@@ -122,61 +122,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-[#09090B] text-white overflow-hidden font-sans">
-      {/* --- LADO ESQUERDO (HERO / BRANDING) --- */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-[#070A12] items-center justify-center p-12 overflow-hidden">
-        <div className="absolute top-[-20%] left-[-20%] h-[800px] w-[800px] rounded-full bg-[#D4AF37]/10 blur-[180px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] h-[600px] w-[600px] rounded-full bg-[#D4AF37]/5 blur-[150px] pointer-events-none" />
-
-        <div className="relative z-10 max-w-xl">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B5952F] text-[#0A0C14] grid place-items-center font-black text-xl shadow-[0_0_40px_rgba(212,175,55,0.3)]">
-              PW
-            </div>
-            <span className="text-xl font-bold tracking-tight">Private Wealth</span>
+    <div className="flex min-h-screen w-full bg-[#09090B] text-white overflow-hidden font-sans items-center justify-center">
+      {/* --- FORMULÁRIO DE LOGIN (CENTRALIZADO) --- */}
+      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8 lg:p-12 bg-[#09090B] relative max-w-lg">
+        {/* Logo no topo */}
+        <div className="flex items-center gap-3 mb-10">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B5952F] text-[#0A0C14] grid place-items-center font-black text-xl shadow-[0_0_40px_rgba(212,175,55,0.3)]">
+            PW
           </div>
-
-          <h1 className="text-5xl xl:text-6xl font-extrabold leading-[1.1] tracking-tight mb-6">
-            O controle do seu <br />
-            legado,{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] to-[#F2D06B]">
-              elevado.
-            </span>
-          </h1>
-
-          <p className="text-lg text-slate-400 mb-10 leading-relaxed max-w-md">
-            A suíte definitiva para gestão patrimonial de alta performance. Segurança, inteligência e controle em um só
-            lugar.
-          </p>
-
-          <div className="space-y-6">
-            <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
-              <div className="mt-1">
-                <CheckCircle2 className="text-[#D4AF37]" size={24} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-1">Segurança de Nível Bancário</h3>
-                <p className="text-sm text-slate-400">Criptografia e autenticação para acesso restrito.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
-              <div className="mt-1">
-                <CheckCircle2 className="text-[#D4AF37]" size={24} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-white mb-1">Gestão Patrimonial 360º</h3>
-                <p className="text-sm text-slate-400">Acompanhe ativos, metas, cenários e projeções financeiras.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 text-xs text-slate-600 font-medium">© 2026 Private Wealth. Acesso restrito.</div>
+          <span className="text-xl font-bold tracking-tight">Private Wealth</span>
         </div>
-      </div>
 
-      {/* --- LADO DIREITO (LOGIN FORM) --- */}
-      <div className="flex-1 flex flex-col justify-center items-center p-4 sm:p-8 lg:p-12 bg-[#09090B] relative">
         <div className="absolute top-8 right-8 flex items-center gap-2 text-sm">
           <span className="text-slate-400">{mode === "login" ? "Não tem uma conta?" : "Já tem uma conta?"}</span>
           <button
@@ -188,9 +144,6 @@ export default function LoginPage() {
         </div>
 
         <div className="w-full max-w-[400px] space-y-8">
-          <div className="lg:hidden flex justify-center mb-8">
-            <div className="w-10 h-10 rounded-xl bg-[#D4AF37] text-[#0A0C14] grid place-items-center font-black">PW</div>
-          </div>
 
           <div className="space-y-2 text-center lg:text-left">
             <h2 className="text-3xl font-bold tracking-tight text-white">

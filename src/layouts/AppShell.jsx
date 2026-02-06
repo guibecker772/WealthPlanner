@@ -21,8 +21,14 @@ import {
   PieChart,
   Eye,
   EyeOff,
+  HelpCircle,
 } from "lucide-react";
 import { useToast } from "../components/ui/Toast";
+import OnboardingModal from "../components/OnboardingModal";
+import GuideTour from "../components/GuideTour";
+import GuideHint from "../components/GuideHint";
+import { GUIDE_STEPS } from "../config/guideSteps";
+import { getCompleteness } from "../components/OnboardingChecklist";
 
 import FinancialEngine from "../engine/FinancialEngine";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -40,6 +46,8 @@ const STORAGE_AI = "planner_ai_enabled_v1";
 const STORAGE_STRESS = "planner_stress_enabled_v1";
 const STORAGE_LEFT_COLLAPSED = "planner_left_collapsed_v1";
 const STORAGE_RIGHT_COLLAPSED = "planner_right_collapsed_v1";
+const STORAGE_ONBOARDING_DONE = "planner_onboarding_done_v1";
+const STORAGE_GUIDE_HINT_SEEN = "planner_guide_hint_seen_v1";
 
 const STORAGE_SIMS_BASE = "planner_simulations_v1";
 const STORAGE_ACTIVE_SIM_BASE = "planner_active_sim_id_v1";
@@ -817,6 +825,8 @@ function Header({
   setIsStressTest,
   user,
   logout,
+  onOpenGuide,
+  guideBtnRef,
 }) {
   return (
     <header className="h-24 shrink-0 flex items-center justify-between px-8 lg:px-10 border-b border-border z-20 relative bg-background/80 backdrop-blur-xl transition-all">
@@ -860,6 +870,23 @@ function Header({
           {isStressTest ? "Stress Ativo" : "Simular Stress"}
         </button>
 
+        {/* ✅ Botão Guia (?) */}
+        <button
+          ref={guideBtnRef}
+          type="button"
+          onClick={readOnly ? undefined : onOpenGuide}
+          disabled={readOnly}
+          className={`p-2.5 rounded-xl border-2 transition-all ${
+            readOnly
+              ? "opacity-50 cursor-not-allowed border-border text-text-secondary"
+              : "border-border text-text-secondary hover:border-accent/50 hover:text-accent hover:bg-accent-subtle/20"
+          }`}
+          title={readOnly ? "Guia disponível no modo Advisor" : "Guia"}
+          aria-label="Guia do app"
+        >
+          <HelpCircle size={18} />
+        </button>
+
         {/* ✅ Menu do usuário (nome clicável) */}
         <UserMenu user={user} onLogout={logout} />
       </div>
@@ -870,6 +897,7 @@ function Header({
 export default function AppShell() {
   const { user, loading, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const uid = user?.uid || null;
 
@@ -901,11 +929,32 @@ export default function AppShell() {
 
   const [trackingByScenario, setTrackingByScenario] = useState({});
 
+  // ✅ Estado do modal de onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // ✅ Estados do tour guiado e hint
+  const [showTour, setShowTour] = useState(false);
+  const [showGuideHint, setShowGuideHint] = useState(false);
+  const guideBtnRef = useRef(null);
+
   useEffect(() => localStorage.setItem(STORAGE_VIEW, viewMode), [viewMode]);
   useEffect(() => localStorage.setItem(STORAGE_AI, String(aiEnabled)), [aiEnabled]);
   useEffect(() => localStorage.setItem(STORAGE_STRESS, String(isStressTest)), [isStressTest]);
   useEffect(() => localStorage.setItem(STORAGE_LEFT_COLLAPSED, String(leftCollapsed)), [leftCollapsed]);
   useEffect(() => localStorage.setItem(STORAGE_RIGHT_COLLAPSED, String(rightCollapsed)), [rightCollapsed]);
+
+  // ✅ Dispara onboarding uma única vez por uid quando entra em /dashboard/*
+  useEffect(() => {
+    if (!uid) return; // Aguardar uid
+    if (!location.pathname.startsWith("/dashboard")) return; // Só em rotas /dashboard/*
+    
+    const onboardingKey = keyForUser(STORAGE_ONBOARDING_DONE, uid);
+    const done = localStorage.getItem(onboardingKey) === "true";
+    
+    if (!done) {
+      setShowOnboarding(true);
+    }
+  }, [uid, location.pathname]);
 
   useEffect(() => {
     if (!uid) return;
@@ -1147,6 +1196,102 @@ export default function AppShell() {
     return "Dashboard";
   }, [location.pathname]);
 
+  // ✅ Handlers do onboarding (DEVEM estar ANTES dos early returns para respeitar Rules of Hooks)
+  const markOnboardingDone = useCallback(() => {
+    if (!uid) return;
+    const onboardingKey = keyForUser(STORAGE_ONBOARDING_DONE, uid);
+    localStorage.setItem(onboardingKey, "true");
+  }, [uid]);
+
+  const handleOnboardingClose = useCallback(() => {
+    markOnboardingDone();
+    setShowOnboarding(false);
+  }, [markOnboardingDone]);
+
+  const handleOnboardingStart = useCallback(() => {
+    markOnboardingDone();
+    setShowOnboarding(false);
+
+    // Heurística de navegação: onde levar o usuário?
+    const cd = draftClientData || {};
+    const assets = cd.assets || [];
+
+    // Se nome vazio OU idades/custos não preenchidos → settings
+    const hasName = Boolean(cd.name && String(cd.name).trim().length > 0);
+    const hasAges = Number(cd.currentAge) > 0 && Number(cd.retirementAge) > 0 && Number(cd.lifeExpectancy) > 0;
+    const hasCosts = (Number(cd.monthlyCostCurrent) > 0 || Number(cd.monthlyCostNow) > 0) && Number(cd.monthlyCostRetirement) > 0;
+
+    if (!hasName || !hasAges || !hasCosts) {
+      navigate("/dashboard/settings");
+      return;
+    }
+
+    // Se não tem patrimônio → assets
+    if (assets.length === 0) {
+      navigate("/dashboard/assets");
+      return;
+    }
+
+    // Fallback → settings (para revisar)
+    navigate("/dashboard/settings");
+  }, [draftClientData, navigate, markOnboardingDone]);
+
+  // ✅ Verifica se há pendências obrigatórias (para hint)
+  const hasRequiredPending = useMemo(() => {
+    const { items } = getCompleteness(draftClientData, draftClientData?.assets, draftClientData?.financialGoals);
+    return items.some((i) => !i.done);
+  }, [draftClientData]);
+
+  // ✅ Handlers do tour guiado
+  const markGuideHintSeen = useCallback(() => {
+    if (!uid) return;
+    const hintKey = keyForUser(STORAGE_GUIDE_HINT_SEEN, uid);
+    localStorage.setItem(hintKey, "true");
+  }, [uid]);
+
+  const handleOpenGuide = useCallback(() => {
+    // Se hint estava visível, marcar como visto
+    if (showGuideHint) {
+      markGuideHintSeen();
+      setShowGuideHint(false);
+    }
+    setShowTour(true);
+  }, [showGuideHint, markGuideHintSeen]);
+
+  const handleCloseTour = useCallback(() => {
+    setShowTour(false);
+  }, []);
+
+  const handleCloseHint = useCallback(() => {
+    markGuideHintSeen();
+    setShowGuideHint(false);
+  }, [markGuideHintSeen]);
+
+  const handleHintStartTour = useCallback(() => {
+    markGuideHintSeen();
+    setShowGuideHint(false);
+    setShowTour(true);
+  }, [markGuideHintSeen]);
+
+  // ✅ Dispara hint 1x por uid em /dashboard/overview com pendências
+  useEffect(() => {
+    if (!uid) return;
+    if (location.pathname !== "/dashboard/overview") return;
+    if (!hasRequiredPending) return;
+    if (readOnly) return; // Não mostrar em modo client
+    
+    const hintKey = keyForUser(STORAGE_GUIDE_HINT_SEEN, uid);
+    const seen = localStorage.getItem(hintKey) === "true";
+    
+    if (!seen) {
+      // Delay pequeno para garantir que o botão ? já foi renderizado
+      const timeout = setTimeout(() => setShowGuideHint(true), 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [uid, location.pathname, hasRequiredPending, readOnly]);
+
+  // ========== EARLY RETURNS (após todos os hooks) ==========
+
   if (loading)
     return (
       <div className="min-h-screen grid place-items-center bg-background text-accent font-display text-xl animate-pulse">
@@ -1199,6 +1344,13 @@ export default function AppShell() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background font-sans text-text-primary">
+      {/* Modal de Onboarding */}
+      <OnboardingModal
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+        onStart={handleOnboardingStart}
+      />
+
       <MainSidebar 
         viewMode={viewMode} 
         logout={logout}
@@ -1222,6 +1374,8 @@ export default function AppShell() {
           setIsStressTest={setIsStressTest}
           user={user}
           logout={logout}
+          onOpenGuide={handleOpenGuide}
+          guideBtnRef={guideBtnRef}
         />
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden relative p-1">
@@ -1255,6 +1409,21 @@ export default function AppShell() {
           </main>
         </div>
       </div>
+
+      {/* ✅ Tour guiado manual */}
+      <GuideTour
+        open={showTour}
+        steps={GUIDE_STEPS}
+        onClose={handleCloseTour}
+      />
+
+      {/* ✅ Hint apontando para o botão de guia */}
+      <GuideHint
+        open={showGuideHint}
+        anchorRef={guideBtnRef}
+        onClose={handleCloseHint}
+        onStartTour={handleHintStartTour}
+      />
     </div>
   );
 }
