@@ -1385,6 +1385,7 @@ const seriesAdjusted = showTracking
         onClose={() => setIsReportModalOpen(false)}
         clientData={clientData}
         kpis={kpisNormalized}
+        scenarioId={scenarioId}
       />
     </div>
   );

@@ -70,18 +70,18 @@ function SpecialistModal({ open, onClose, title, message }) {
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-navy-950/90 shadow-2xl">
-        <div className="p-5 border-b border-white/10">
+      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-surface-2 shadow-2xl">
+        <div className="p-5 border-b border-divider">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-white font-semibold text-lg">{title}</h3>
-              <p className="text-slate-400 text-sm mt-1">
+              <h3 className="text-text font-semibold text-lg">{title}</h3>
+              <p className="text-text-faint text-sm mt-1">
                 Encaminhamento para análise especializada
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white transition"
+              className="text-text-faint hover:text-text transition"
               aria-label="Fechar"
             >
               ✕
@@ -90,14 +90,14 @@ function SpecialistModal({ open, onClose, title, message }) {
         </div>
 
         <div className="p-5">
-          <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">
+          <p className="text-text-muted text-sm leading-relaxed whitespace-pre-line">
             {message}
           </p>
 
           <div className="mt-5 flex flex-col sm:flex-row gap-3 sm:justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-white/10 text-slate-200 hover:bg-white/5 transition"
+              className="px-4 py-2 rounded-xl border border-border text-text-muted hover:bg-surface-3 transition"
             >
               Fechar
             </button>
@@ -302,39 +302,39 @@ export default function SuccessionInsightCard({
 
   return (
     <>
-      <div className={`relative overflow-hidden rounded-2xl border border-white/10 bg-navy-950/55 shadow-xl ${className}`}>
+      <div className={`relative overflow-hidden rounded-2xl border border-border bg-surface-2 shadow-xl ${className}`}>
         <div className={`absolute inset-0 bg-gradient-to-br ${ToneGlow}`} />
 
         <div className="relative p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] tracking-widest uppercase text-slate-400">
+              <p className="text-[11px] tracking-widest uppercase text-text-faint">
                 Indicador relevante
               </p>
               <div className="mt-2 flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-white/5 border border-white/10">
-                  <Icon className="text-slate-200" size={18} />
+                <div className="p-2 rounded-xl bg-surface-3/50 border border-border">
+                  <Icon className="text-text-muted" size={18} />
                 </div>
                 <div>
-                  <div className="text-3xl font-semibold text-white">{cfg.value}</div>
-                  <div className="text-sm text-slate-300">{cfg.label}</div>
+                  <div className="text-3xl font-semibold text-text">{cfg.value}</div>
+                  <div className="text-sm text-text-muted">{cfg.label}</div>
                 </div>
               </div>
             </div>
 
             <div className="text-right">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                <span className="w-2 h-2 rounded-full bg-gold-500" />
-                <span className="text-xs text-slate-200 font-semibold">{cfg.badge}</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-3/50 border border-border">
+                <span className="w-2 h-2 rounded-full bg-accent" />
+                <span className="text-xs text-text-muted font-semibold">{cfg.badge}</span>
               </div>
-              <div className="mt-2 text-xs text-slate-400">
-                Prioridade: <span className="text-slate-200 font-semibold">{cfg.priority}</span>
+              <div className="mt-2 text-xs text-text-faint">
+                Prioridade: <span className="text-text-muted font-semibold">{cfg.priority}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 border-l border-white/10 pl-4">
-            <p className="text-sm text-slate-300 leading-relaxed">
+          <div className="mt-4 border-l border-border pl-4">
+            <p className="text-sm text-text-muted leading-relaxed">
               “{cfg.hint}”
             </p>
           </div>
@@ -349,7 +349,7 @@ export default function SuccessionInsightCard({
               <ChevronRight size={18} />
             </button>
 
-            <p className="mt-3 text-xs text-slate-500 text-center">
+            <p className="mt-3 text-xs text-text-faint text-center">
               Recomendação baseada no patrimônio informado e premissas do cenário.
             </p>
           </div>

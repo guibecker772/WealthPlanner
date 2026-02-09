@@ -47,14 +47,14 @@ export default function CashInEventsCard({ clientData, updateField, readOnly }) 
     >
       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
         {events.length === 0 ? (
-          <p className="text-slate-500 text-sm py-8 italic text-center bg-navy-900/50 rounded-xl border border-white/10">
+          <p className="text-text-faint text-sm py-8 italic text-center bg-surface-1 rounded-xl border border-border">
             Nenhuma entrada futura cadastrada (ex: venda de imóvel, herança, bônus).
           </p>
         ) : (
           events.map((item) => (
             <div
               key={item.id}
-              className="group bg-navy-900/30 border border-white/10 p-4 rounded-xl hover:border-gold-500/30 transition-all backdrop-blur-sm flex flex-col md:flex-row gap-5 items-start md:items-center"
+              className="group bg-surface-1 border border-border p-4 rounded-xl hover:border-gold-500/30 transition-all backdrop-blur-sm flex flex-col md:flex-row gap-5 items-start md:items-center"
             >
               <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 shadow-sm shrink-0">
                 <PiggyBank size={22} />
@@ -96,7 +96,7 @@ export default function CashInEventsCard({ clientData, updateField, readOnly }) 
                     />
                   </div>
 
-                  <div className="text-xs text-slate-400 mb-1 flex items-center gap-1 shrink-0 bg-white/5 px-2 py-1 rounded-md">
+                  <div className="text-xs text-text-faint mb-1 flex items-center gap-1 shrink-0 bg-surface-3/50 px-2 py-1 rounded-md">
                     <Calendar size={12} />
                     <span>Ano: {getYearFromAge(item.age)}</span>
                   </div>
@@ -108,7 +108,7 @@ export default function CashInEventsCard({ clientData, updateField, readOnly }) 
                   variant="ghost"
                   size="sm"
                   onClick={() => removeEvent(item.id)}
-                  className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all self-center shrink-0"
+                  className="text-text-faint hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all self-center shrink-0"
                 >
                   <Trash2 size={18} />
                 </Button>
@@ -118,7 +118,7 @@ export default function CashInEventsCard({ clientData, updateField, readOnly }) 
         )}
       </div>
 
-      <p className="text-xs text-slate-400 mt-4 border-t border-white/10 pt-4 flex items-center gap-2">
+      <p className="text-xs text-text-faint mt-4 border-t border-border pt-4 flex items-center gap-2">
         <TrendingUp size={14} className="text-gold-400" />
         <span>Valores lançados aqui são somados ao capital investido na idade indicada, potencializando os juros compostos.</span>
       </p>

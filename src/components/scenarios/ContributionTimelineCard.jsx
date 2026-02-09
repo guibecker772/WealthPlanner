@@ -88,10 +88,10 @@ export default function ContributionTimelineCard({
             <AlertTriangle size={20} />
           </div>
           <div className="flex-1">
-            <h4 className="text-white font-bold mb-1">
+            <h4 className="text-text font-bold mb-1">
               Simular Impacto de Grandes Compras
             </h4>
-            <p className="text-sm text-slate-300 mb-3 leading-relaxed">
+            <p className="text-sm text-text-muted mb-3 leading-relaxed">
               Vai financiar um imóvel ou carro? Isso geralmente reduz sua capacidade
               de aporte mensal por alguns anos.
             </p>
@@ -107,7 +107,7 @@ export default function ContributionTimelineCard({
 
       <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
         {sortedTimeline.length === 0 ? (
-          <div className="p-5 rounded-xl bg-navy-900/50 border border-white/10 text-slate-400 text-sm italic text-center">
+          <div className="p-5 rounded-xl bg-surface-1 border border-border text-text-faint text-sm italic text-center">
             Atualmente, o sistema projeta apenas o aporte base de{" "}
             <b>{formatCurrencyBR(baseContribution)}/mês</b> dos {currentAge} aos{" "}
             {endAge} anos.
@@ -122,7 +122,7 @@ export default function ContributionTimelineCard({
               ? "border-indigo-500/30 bg-indigo-900/20"
               : isNegative
               ? "border-rose-500/30 bg-rose-900/20"
-              : "border-white/10 hover:border-gold-500/30 bg-navy-900/30";
+              : "border-border hover:border-gold-500/30 bg-surface-1";
 
             const iconClasses = isNegative
               ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
@@ -213,7 +213,7 @@ export default function ContributionTimelineCard({
                       />
                     </div>
 
-                    <ArrowRight size={16} className="text-slate-500 mb-4 shrink-0" />
+                    <ArrowRight size={16} className="text-text-faint mb-4 shrink-0" />
 
                     <div className="flex-1 min-w-[110px]">
                       <InputField
@@ -234,7 +234,7 @@ export default function ContributionTimelineCard({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeRange(range.id)}
-                    className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all self-center shrink-0"
+                    className="text-text-faint hover:text-rose-400 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 transition-all self-center shrink-0"
                   >
                     <Trash2 size={18} />
                   </Button>

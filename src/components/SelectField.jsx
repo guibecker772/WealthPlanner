@@ -13,7 +13,7 @@ export default function SelectField({
   return (
     <div className={`space-y-1.5 ${className}`}>
       {label && (
-        <label className="block text-sm font-medium text-slate-300 tracking-wide">
+        <label className="block text-sm font-medium text-text-muted tracking-wide">
           {label}
         </label>
       )}
@@ -22,33 +22,30 @@ export default function SelectField({
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          // CORREÇÃO PROBLEMA 1: colorScheme força o navegador a usar controles escuros
-          style={{ colorScheme: "dark" }}
           className={`
-            w-full appearance-none rounded-xl border border-white/10 
-            bg-navy-900/50 px-4 py-3 pr-10 text-white 
-            placeholder-slate-500 transition-all duration-200
-            focus:border-gold-500/50 focus:outline-none focus:ring-2 focus:ring-gold-500/20 focus:bg-navy-900
-            disabled:cursor-not-allowed disabled:opacity-50 group-hover:border-white/20
+            w-full appearance-none rounded-xl border border-border 
+            bg-surface-1 px-4 py-3 pr-10 text-text 
+            placeholder:text-text-faint transition-all duration-200
+            focus:border-accent/50 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:bg-surface-1
+            disabled:cursor-not-allowed disabled:opacity-50 group-hover:border-border-highlight
             ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
           `}
         >
-          <option value="" disabled className="bg-navy-950 text-slate-500">
+          <option value="" disabled className="bg-surface-1 text-text-faint">
             Selecione...
           </option>
           {options.map((opt) => (
             <option
               key={opt.value}
               value={opt.value}
-              // CORREÇÃO PROBLEMA 1: Força fundo escuro e texto claro nas opções
-              className="bg-navy-950 text-white hover:bg-navy-800 py-2"
+              className="bg-surface-1 text-text"
             >
               {opt.label}
             </option>
           ))}
         </select>
         {/* Ícone customizado posicionado absolutamente */}
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 group-hover:text-gold-400 transition-colors">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-text-faint group-hover:text-accent transition-colors">
           <ChevronDown size={20} />
         </div>
       </div>

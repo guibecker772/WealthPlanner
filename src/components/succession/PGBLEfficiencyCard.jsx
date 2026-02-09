@@ -404,24 +404,24 @@ export default function PGBLEfficiencyCard({ clientData, readOnly = false }) {
         <div className="h-[350px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis
                 dataKey="age"
-                stroke="#94a3b8"
-                tick={{ fill: "#94a3b8", fontSize: 12 }}
+                stroke="hsl(var(--text-faint))"
+                tick={{ fill: "hsl(var(--text-faint))", fontSize: 12 }}
                 tickFormatter={(v) => `${v}a`}
               />
               <YAxis
-                stroke="#94a3b8"
-                tick={{ fill: "#94a3b8", fontSize: 12 }}
+                stroke="hsl(var(--text-faint))"
+                tick={{ fill: "hsl(var(--text-faint))", fontSize: 12 }}
                 tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#1e293b",
-                  border: "none",
+                  backgroundColor: "hsl(var(--chart-tooltip-bg))",
+                  border: "1px solid hsl(var(--chart-tooltip-border))",
                   borderRadius: "8px",
-                  color: "#fff",
+                  color: "hsl(var(--chart-tooltip-text))",
                 }}
                 formatter={(value, name) => [
                   formatCurrencyBR(value),
@@ -437,7 +437,7 @@ export default function PGBLEfficiencyCard({ clientData, readOnly = false }) {
                 }}
               />
               <Legend
-                wrapperStyle={{ color: "#cbd5e1" }}
+                wrapperStyle={{ color: "hsl(var(--text-muted))" }}
                 formatter={(value) => (value === "pgbl" ? "Aplicação PGBL" : "Benefício Fiscal")}
               />
               <Bar dataKey="pgbl" stackId="a" fill="#f59e0b" name="pgbl" radius={[0, 0, 0, 0]} />
@@ -463,17 +463,17 @@ export default function PGBLEfficiencyCard({ clientData, readOnly = false }) {
       {/* Resumo Final */}
       <Card title="Resumo da Projeção" className="bg-gradient-to-br from-indigo-900/30 to-sky-900/30 border-indigo-500/20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center p-4 rounded-xl bg-surface/30 border border-white/10">
+          <div className="text-center p-4 rounded-xl bg-surface/30 border border-border">
             <p className="text-xs text-text-muted font-bold uppercase mb-1">Total Aportes</p>
-            <p className="text-2xl font-bold text-white">{formatCurrencyBR(summary.totalContributions)}</p>
+            <p className="text-2xl font-bold text-text">{formatCurrencyBR(summary.totalContributions)}</p>
           </div>
 
-          <div className="text-center p-4 rounded-xl bg-surface/30 border border-white/10">
+          <div className="text-center p-4 rounded-xl bg-surface/30 border border-border">
             <p className="text-xs text-text-muted font-bold uppercase mb-1">Total Economia Fiscal</p>
             <p className="text-2xl font-bold text-emerald-400">{formatCurrencyBR(summary.totalTaxSavings)}</p>
           </div>
 
-          <div className="text-center p-4 rounded-xl bg-surface/30 border border-white/10">
+          <div className="text-center p-4 rounded-xl bg-surface/30 border border-border">
             <p className="text-xs text-text-muted font-bold uppercase mb-1">Patrimônio Final</p>
             <p className="text-2xl font-bold text-accent">{formatCurrencyBR(summary.finalTotal)}</p>
             <p className="text-xs text-text-muted mt-1">
@@ -482,7 +482,7 @@ export default function PGBLEfficiencyCard({ clientData, readOnly = false }) {
           </div>
         </div>
 
-        <div className="mt-6 p-4 rounded-xl bg-surface/20 border border-white/5">
+        <div className="mt-6 p-4 rounded-xl bg-surface/20 border border-border">
           <div className="flex items-start gap-2">
             <Info size={16} className="text-text-muted mt-0.5 shrink-0" />
             <p className="text-xs text-text-muted leading-relaxed">

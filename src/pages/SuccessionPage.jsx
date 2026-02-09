@@ -114,7 +114,7 @@ export default function SuccessionPage() {
           className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${
             activeStrategyId === "overview"
               ? "bg-gold-500 text-navy-950"
-              : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+              : "bg-surface-2 text-text-muted hover:bg-surface-3 border border-border"
           }`}
         >
           Visão Geral
@@ -129,7 +129,7 @@ export default function SuccessionPage() {
                 ? st.id === "previdencia"
                   ? "bg-violet-500 text-white"
                   : "bg-gold-500 text-navy-950"
-                : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+                : "bg-surface-2 text-text-muted hover:bg-surface-3 border border-border"
             }`}
           >
             {activeStrategyId === st.id && <CheckCircle2 size={14} />}
@@ -154,13 +154,13 @@ export default function SuccessionPage() {
                     <Tooltip
                       formatter={(v) => formatCurrencyBR(v)}
                       contentStyle={{
-                        backgroundColor: "#1e293b",
-                        border: "none",
+                        backgroundColor: "hsl(var(--chart-tooltip-bg))",
+                        border: "1px solid hsl(var(--chart-tooltip-border))",
                         borderRadius: "8px",
-                        color: "#fff",
+                        color: "hsl(var(--chart-tooltip-text))",
                       }}
                     />
-                    <Legend verticalAlign="bottom" wrapperStyle={{ color: "#cbd5e1" }} />
+                    <Legend verticalAlign="bottom" wrapperStyle={{ color: "hsl(var(--text-muted))" }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -181,7 +181,7 @@ export default function SuccessionPage() {
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-400 leading-relaxed">
+                <div className="text-xs text-text-faint leading-relaxed">
                   <b>Obs.:</b> “Financeiro” é o que pode sustentar renda/aposentadoria (alta liquidez). “Bens” entra em
                   sucessão, mas não deve inflar o capital de aposentadoria.
                 </div>
@@ -193,29 +193,29 @@ export default function SuccessionPage() {
           <Card title="Custos do Inventário">
             <div className="space-y-4">
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between border-b border-white/10 py-2">
-                  <span className="text-slate-300">Imposto (ITCMD)</span>
-                  <span className="font-bold text-white">
+                <div className="flex justify-between border-b border-border py-2">
+                  <span className="text-text-muted">Imposto (ITCMD)</span>
+                  <span className="font-bold text-text">
                     {formatCurrencyBR(successionInfo?.costs?.itcmd || 0)}
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-white/10 py-2">
-                  <span className="text-slate-300">Honorários</span>
-                  <span className="font-bold text-white">
+                <div className="flex justify-between border-b border-border py-2">
+                  <span className="text-text-muted">Honorários</span>
+                  <span className="font-bold text-text">
                     {formatCurrencyBR(successionInfo?.costs?.legal || 0)}
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-white/10 py-2">
-                  <span className="text-slate-300">Custas</span>
-                  <span className="font-bold text-white">
+                <div className="flex justify-between border-b border-border py-2">
+                  <span className="text-text-muted">Custas</span>
+                  <span className="font-bold text-text">
                     {formatCurrencyBR(successionInfo?.costs?.fees || 0)}
                   </span>
                 </div>
               </div>
 
-              <div className="bg-navy-900/50 -mx-6 -mb-6 p-6 border-t border-white/10">
+              <div className="bg-surface-1 -mx-6 -mb-6 p-6 border-t border-border">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-slate-300 font-bold">Total Estimado</span>
+                  <span className="text-text-muted font-bold">Total Estimado</span>
                   <span className="text-xl font-bold text-rose-400">
                     {formatCurrencyBR(successionInfo?.costs?.total || 0)}
                   </span>
@@ -243,8 +243,8 @@ export default function SuccessionPage() {
                   <Shield size={22} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-white text-lg">Capital de proteção</h4>
-                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+                  <h4 className="font-bold text-text text-lg">Capital de proteção</h4>
+                  <p className="text-sm text-text-faint mt-1 leading-relaxed">
                     Estimativa do capital necessário para cobrir o custo de vida caso o cliente fique incapaz de gerar renda.
                   </p>
 
@@ -254,7 +254,7 @@ export default function SuccessionPage() {
                       className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${
                         incomeInsuranceBase === "now"
                           ? "bg-gold-500 text-navy-950 border-gold-500"
-                          : "bg-transparent text-slate-300 border-slate-600 hover:bg-white/5"
+                          : "bg-transparent text-text-muted border-border hover:bg-surface-3"
                       }`}
                     >
                       Usar custo atual
@@ -264,15 +264,15 @@ export default function SuccessionPage() {
                       className={`px-3 py-2 rounded-lg text-xs font-bold border transition-colors ${
                         incomeInsuranceBase === "retirement"
                           ? "bg-gold-500 text-navy-950 border-gold-500"
-                          : "bg-transparent text-slate-300 border-slate-600 hover:bg-white/5"
+                          : "bg-transparent text-text-muted border-border hover:bg-surface-3"
                       }`}
                     >
                       Usar custo aposentadoria
                     </button>
                   </div>
 
-                  <div className="mt-3 text-xs text-slate-400">
-                    Base mensal: <b className="text-slate-200">{formatCurrencyBR(monthlyBaseCost || 0)}</b>
+                  <div className="mt-3 text-xs text-text-faint">
+                    Base mensal: <b className="text-text-muted">{formatCurrencyBR(monthlyBaseCost || 0)}</b>
                     {incomeInsuranceBase === "now" && monthlyCostNow === 0 ? (
                       <span className="block mt-1 text-amber-300">
                         Obs.: “Custo de Vida Atual” não foi encontrado no cenário. Verifique o campo salvo no clientData.
@@ -283,16 +283,16 @@ export default function SuccessionPage() {
               </div>
 
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl border border-white/10 bg-navy-900/30">
-                  <div className="text-xs font-bold uppercase text-slate-400">Cobertura 12 meses</div>
-                  <div className="mt-1 text-2xl font-bold text-white">{formatCurrencyBR(incomeInsurance12)}</div>
-                  <div className="mt-2 text-xs text-slate-500">Para manter o padrão de vida por 1 ano.</div>
+                <div className="p-4 rounded-xl border border-border bg-surface-1">
+                  <div className="text-xs font-bold uppercase text-text-faint">Cobertura 12 meses</div>
+                  <div className="mt-1 text-2xl font-bold text-text">{formatCurrencyBR(incomeInsurance12)}</div>
+                  <div className="mt-2 text-xs text-text-faint">Para manter o padrão de vida por 1 ano.</div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-white/10 bg-navy-900/30">
-                  <div className="text-xs font-bold uppercase text-slate-400">Cobertura 60 meses</div>
-                  <div className="mt-1 text-2xl font-bold text-white">{formatCurrencyBR(incomeInsurance60)}</div>
-                  <div className="mt-2 text-xs text-slate-500">Para manter o padrão de vida por 5 anos.</div>
+                <div className="p-4 rounded-xl border border-border bg-surface-1">
+                  <div className="text-xs font-bold uppercase text-text-faint">Cobertura 60 meses</div>
+                  <div className="mt-1 text-2xl font-bold text-text">{formatCurrencyBR(incomeInsurance60)}</div>
+                  <div className="mt-2 text-xs text-text-faint">Para manter o padrão de vida por 5 anos.</div>
                 </div>
               </div>
             </div>
@@ -305,15 +305,15 @@ export default function SuccessionPage() {
                 <Scale size={24} />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-white mb-1">Economia Potencial com Planejamento</h3>
-                <p className="text-sm text-slate-300 leading-relaxed mb-4">
+                <h3 className="text-lg font-bold text-text mb-1">Economia Potencial com Planejamento</h3>
+                <p className="text-sm text-text-muted leading-relaxed mb-4">
                   Com estratégias como holding e previdência, é possível reduzir custos e agilizar o processo.
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
-                  <div className="px-4 py-2 bg-navy-950/50 rounded-lg border border-white/10 shadow-sm w-full sm:w-auto text-center sm:text-left">
-                    <span className="block text-xs font-bold text-slate-400 uppercase">Custo Atual</span>
-                    <span className="font-bold text-white">
+                  <div className="px-4 py-2 bg-surface-2 rounded-lg border border-border shadow-sm w-full sm:w-auto text-center sm:text-left">
+                    <span className="block text-xs font-bold text-text-faint uppercase">Custo Atual</span>
+                    <span className="font-bold text-text">
                       {formatCurrencyBR(successionInfo?.costs?.total || 0)}
                     </span>
                   </div>
@@ -362,7 +362,7 @@ export default function SuccessionPage() {
               className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
                 previdenciaSubTab === "overview"
                   ? "bg-violet-500 text-white"
-                  : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+                  : "bg-surface-2 text-text-muted hover:bg-surface-3 border border-border"
               }`}
             >
               <ScrollText size={14} />
@@ -373,7 +373,7 @@ export default function SuccessionPage() {
               className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
                 previdenciaSubTab === "efficiency"
                   ? "bg-amber-500 text-navy-950"
-                  : "bg-navy-800 text-slate-300 hover:bg-navy-700 border border-white/10"
+                  : "bg-surface-2 text-text-muted hover:bg-surface-3 border border-border"
               }`}
             >
               <Calculator size={14} />

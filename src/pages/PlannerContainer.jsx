@@ -83,7 +83,7 @@ export default function PlannerContainer({ defaultClientData, viewMode, aiEnable
 
       <div className="flex gap-2 justify-end">
         <button
-          className="px-4 py-2 rounded-xl border border-white/10 bg-white/5"
+          className="px-4 py-2 rounded-xl border border-border bg-surface-1 text-text font-bold hover:bg-surface-2 transition"
           onClick={onSave}
           disabled={!isDirty}
         >

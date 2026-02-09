@@ -101,6 +101,9 @@ module.exports = {
           5: 'hsl(var(--chart-5) / <alpha-value>)',
           grid: 'hsl(var(--chart-grid))',
           axis: 'hsl(var(--chart-axis) / <alpha-value>)',
+          'tooltip-bg': 'hsl(var(--chart-tooltip-bg) / <alpha-value>)',
+          'tooltip-text': 'hsl(var(--chart-tooltip-text) / <alpha-value>)',
+          'tooltip-border': 'hsl(var(--chart-tooltip-border))',
         },
       },
       boxShadow: {

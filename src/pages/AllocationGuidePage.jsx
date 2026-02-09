@@ -2365,7 +2365,7 @@ export default function AllocationGuidePage() {
                               r={7}
                               className="fill-green-500"
                               strokeWidth={2}
-                              stroke="white"
+                              stroke="currentColor"
                             />
                             <text
                               x={scaleX(optResult.diagnostics.volatility)}

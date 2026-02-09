@@ -80,7 +80,7 @@ export default function PrevidenciaSuccessionCard({ clientData, succession, upda
             {previdenciaAssets.map((asset) => (
               <div
                 key={asset.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-surface/30 border border-white/5"
+                className="flex items-center justify-between p-3 rounded-lg bg-surface/30 border border-border"
               >
                 <div className="flex items-center gap-3">
                   <div className={`px-2 py-1 rounded text-xs font-bold ${
@@ -106,7 +106,7 @@ export default function PrevidenciaSuccessionCard({ clientData, succession, upda
       <Card title="Tratamento na Sucessão" className="bg-surface-highlight/20">
         <div className="space-y-4">
           {/* Toggle: Fora do Inventário */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-surface/30 border border-white/10">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-surface/30 border border-border">
             <div className="flex-1">
               <h4 className="font-semibold text-text-primary">Considerar fora do inventário?</h4>
               <p className="text-xs text-text-muted mt-1">
@@ -137,7 +137,7 @@ export default function PrevidenciaSuccessionCard({ clientData, succession, upda
           </div>
 
           {/* Toggle: ITCMD */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-surface/30 border border-white/10">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-surface/30 border border-border">
             <div className="flex-1">
               <h4 className="font-semibold text-text-primary">Incide ITCMD sobre previdência?</h4>
               <p className="text-xs text-text-muted mt-1">
@@ -191,36 +191,36 @@ export default function PrevidenciaSuccessionCard({ clientData, succession, upda
       {/* Benefícios */}
       <Card title="Vantagens da Previdência na Sucessão" className="bg-gradient-to-br from-violet-900/30 to-indigo-900/30 border-violet-500/20">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-surface/30 border border-white/10">
-            <h4 className="font-semibold text-white mb-2">🚀 Liquidez Rápida</h4>
+          <div className="p-4 rounded-xl bg-surface/30 border border-border">
+            <h4 className="font-semibold text-text mb-2">🚀 Liquidez Rápida</h4>
             <p className="text-xs text-text-muted">
               Pagamento em ~30 dias diretamente aos beneficiários, sem aguardar conclusão do inventário.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-surface/30 border border-white/10">
-            <h4 className="font-semibold text-white mb-2">📋 Fora do Inventário</h4>
+          <div className="p-4 rounded-xl bg-surface/30 border border-border">
+            <h4 className="font-semibold text-text mb-2">📋 Fora do Inventário</h4>
             <p className="text-xs text-text-muted">
               Não compõe a massa de bens a inventariar, simplificando o processo sucessório.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-surface/30 border border-white/10">
-            <h4 className="font-semibold text-white mb-2">👥 Flexibilidade de Beneficiários</h4>
+          <div className="p-4 rounded-xl bg-surface/30 border border-border">
+            <h4 className="font-semibold text-text mb-2">👥 Flexibilidade de Beneficiários</h4>
             <p className="text-xs text-text-muted">
               Você escolhe quem recebe e em qual proporção, podendo alterar a qualquer momento.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-surface/30 border border-white/10">
-            <h4 className="font-semibold text-white mb-2">💰 Eficiência Tributária</h4>
+          <div className="p-4 rounded-xl bg-surface/30 border border-border">
+            <h4 className="font-semibold text-text mb-2">💰 Eficiência Tributária</h4>
             <p className="text-xs text-text-muted">
               Tabela regressiva (até 10% após 10 anos) e possível isenção de ITCMD conforme estado.
             </p>
           </div>
         </div>
 
-        <div className="mt-4 p-3 rounded-lg bg-surface/20 border border-white/5">
+        <div className="mt-4 p-3 rounded-lg bg-surface/20 border border-border">
           <div className="flex items-start gap-2">
             <Info size={14} className="text-text-muted mt-0.5 shrink-0" />
             <p className="text-xs text-text-muted">

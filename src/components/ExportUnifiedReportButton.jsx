@@ -119,9 +119,9 @@ export default function ExportUnifiedReportButton({
         `
         inline-flex items-center gap-2
         px-4 py-2 rounded-lg text-sm font-bold
-        border border-white/10
-        bg-navy-900/50 hover:bg-navy-800
-        text-slate-200
+        border border-border
+        bg-surface-1 hover:bg-surface-2
+        text-text-muted
         transition
         disabled:opacity-60 disabled:cursor-not-allowed
         ` + className

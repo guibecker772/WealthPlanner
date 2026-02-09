@@ -32,8 +32,8 @@ export default function WealthScore({ score }) {
       </ResponsiveContainer>
 
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center mt-4">
-        <span className="text-3xl font-bold text-slate-800">{score}</span>
-        <span className="block text-[10px] text-slate-400 uppercase tracking-widest">
+        <span className="text-3xl font-bold text-text">{score}</span>
+        <span className="block text-[10px] text-text-faint uppercase tracking-widest">
           Score
         </span>
       </div>

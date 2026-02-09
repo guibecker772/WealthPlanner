@@ -54,6 +54,9 @@
   --chart-5: 280 60% 55%;            /* Purple */
   --chart-grid: 222 20% 16% / 0.6;   /* Gridlines sutis */
   --chart-axis: 215 12% 52%;         /* Axis labels */
+  --chart-tooltip-bg: 222 38% 12%;   /* Tooltip background */
+  --chart-tooltip-text: 210 25% 96%; /* Tooltip text */
+  --chart-tooltip-border: 222 18% 22%; /* Tooltip border */
 
   /* ─── Shadows ─── */
   --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.30);
@@ -63,7 +66,7 @@
 }
 
 /* ─── LIGHT THEME: Premium Paper/Ivory ─── */
-.light {
+html.light {
   color-scheme: light;
 
   /* Backgrounds - Warm paper tones */
@@ -108,6 +111,9 @@
   --chart-5: 280 55% 45%;        /* Purple - quinary */
   --chart-grid: 40 10% 82% / 0.9;
   --chart-axis: 220 15% 40%;
+  --chart-tooltip-bg: 40 30% 99%;     /* Light tooltip bg */
+  --chart-tooltip-text: 222 47% 11%;  /* Dark text */
+  --chart-tooltip-border: 40 10% 82%; /* Subtle border */
 
   /* Shadows - Softer, warmer */
   --shadow-soft: 0 4px 20px -2px rgba(30, 25, 15, 0.05);

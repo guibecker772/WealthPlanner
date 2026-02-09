@@ -180,16 +180,16 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 animate-fade-in pb-20">
       {/* Cabeçalho + Botão PDF (canto superior direito) */}
-      <div className="flex items-start justify-between gap-4 mb-8 border-b border-white/10 pb-4">
+      <div className="flex items-start justify-between gap-4 mb-8 border-b border-border pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-navy-800/50 rounded-xl border border-white/5 shadow-inner">
+          <div className="p-3 bg-surface-2 rounded-xl border border-border shadow-inner">
             <UserCircle2 className="text-gold-400" size={28} />
           </div>
           <div>
-            <h2 className="text-3xl font-serif text-white tracking-wide">
+            <h2 className="text-3xl font-serif text-text tracking-wide">
               Dados do Cliente
             </h2>
-            <p className="text-slate-400 mt-1">
+            <p className="text-text-faint mt-1">
               Configure os dados do cliente e as bases do cálculo.
             </p>
           </div>
@@ -239,7 +239,7 @@ export default function SettingsPage() {
                 disabled={readOnly}
               />
 
-              <div className="pt-4 border-t border-white/10 space-y-4">
+              <div className="pt-4 border-t border-border space-y-4">
                 <SelectField
                   label="Estado (UF) - Impacta Custos de Sucessão"
                   value={uf}
@@ -273,28 +273,28 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Bloco de informações de custos */}
-                <div className="bg-navy-900/50 p-3 rounded-lg border border-white/10 text-xs text-slate-400 grid grid-cols-3 gap-2 text-center">
+                <div className="bg-surface-1 p-3 rounded-lg border border-border text-xs text-text-faint grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <span className="block font-bold text-slate-300 mb-1">
+                    <span className="block font-bold text-text-muted mb-1">
                       ITCMD (máx)
                     </span>
                     {formatPercent(rule.itcmdMax * 100, 2)}
                   </div>
-                  <div className="border-l border-white/10">
-                    <span className="block font-bold text-slate-300 mb-1">
+                  <div className="border-l border-border">
+                    <span className="block font-bold text-text-muted mb-1">
                       Honorários
                     </span>
                     {formatPercent(honorariosRate * 100, 2)}
                   </div>
-                  <div className="border-l border-white/10">
-                    <span className="block font-bold text-slate-300 mb-1">
+                  <div className="border-l border-border">
+                    <span className="block font-bold text-text-muted mb-1">
                       Custas
                     </span>
                     {formatPercent(custasRate * 100, 2)}
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-500 italic">
+                <p className="text-xs text-text-faint italic">
                   *Ao trocar a UF, o ITCMD muda. Honorários/Custas seguem as porcentagens acima.
                 </p>
               </div>
@@ -420,7 +420,7 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div className="mt-6 p-3 bg-navy-900/50 rounded-lg border border-indigo-500/20 flex gap-3 items-start">
+            <div className="mt-6 p-3 bg-surface-1 rounded-lg border border-indigo-500/20 flex gap-3 items-start">
               <AlertTriangle size={18} className="text-indigo-400 shrink-0 mt-0.5" />
               <p className="text-xs text-indigo-300 leading-relaxed">
                 O período de usufruto da renda será dos{" "}
@@ -462,8 +462,8 @@ export default function SettingsPage() {
                 className="font-bold text-gold-100 border-gold-500/30 focus:border-gold-500"
               />
 
-              <div className="pt-4 border-t border-white/10">
-                <h4 className="text-sm font-bold text-slate-300 mb-4 uppercase tracking-wider flex items-center gap-2">
+              <div className="pt-4 border-t border-border">
+                <h4 className="text-sm font-bold text-text-muted mb-4 uppercase tracking-wider flex items-center gap-2">
                   <TrendingUp size={16} className="text-gold-500" /> Rentabilidade
                   Nominal Bruta (a.a.)
                 </h4>
@@ -488,7 +488,7 @@ export default function SettingsPage() {
                     readOnly={readOnly}
                     suffix="%"
                     placeholder="Ex: 10.0"
-                    className="border-gold-500/30 focus:border-gold-500 bg-navy-900/80"
+                    className="border-gold-500/30 focus:border-gold-500 bg-surface-1"
                   />
                   <InputField
                     label="Cenário Arrojado"
@@ -510,10 +510,10 @@ export default function SettingsPage() {
               <Card title="Inteligência Artificial">
                 <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <h4 className="text-sm font-bold text-slate-300">
+                    <h4 className="text-sm font-bold text-text-muted">
                       Ativar Smart Copilot
                     </h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-text-faint mt-1">
                       A IA gera insights educativos sobre o cenário, mas não
                       executa cálculos financeiros.
                     </p>
@@ -524,7 +524,7 @@ export default function SettingsPage() {
                     className={`p-2 rounded-full transition-colors ${
                       aiEnabled
                         ? "bg-indigo-500/20 text-indigo-400 shadow-sm"
-                        : "bg-slate-700/50 text-slate-400"
+                        : "bg-surface-3 text-text-faint"
                     }`}
                   >
                     {aiEnabled ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}

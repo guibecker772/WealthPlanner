@@ -77,9 +77,9 @@ export default function GoalsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-serif text-white tracking-wide">Metas & Objetivos</h2>
+        <h2 className="text-xl font-serif text-text tracking-wide">Metas & Objetivos</h2>
         {!readOnly && (
-          <button onClick={addGoal} data-guide="add-goal" className="btn-outline py-2 px-4 text-sm flex items-center gap-2 text-slate-200 hover:text-white">
+          <button onClick={addGoal} data-guide="add-goal" className="btn-outline py-2 px-4 text-sm flex items-center gap-2 text-text-muted hover:text-text">
             <Plus size={16} /> Adicionar Nova Meta
           </button>
         )}
@@ -94,14 +94,14 @@ export default function GoalsPage() {
           return (
             <div
               key={goal.id}
-              className={`group bg-navy-900/50 border p-5 rounded-xl transition-all backdrop-blur-sm flex flex-col md:flex-row gap-6 items-start md:items-center ${
-                isImpact ? "border-rose-500/20 hover:border-rose-500/40" : "border-white/5 hover:border-gold-500/30"
+              className={`group bg-surface-1 border p-5 rounded-xl transition-all backdrop-blur-sm flex flex-col md:flex-row gap-6 items-start md:items-center ${
+                isImpact ? "border-rose-500/20 hover:border-rose-500/40" : "border-border hover:border-gold-500/30"
               }`}
             >
               <div className="flex items-center gap-4 flex-1 w-full md:w-auto">
                 <div
                   className={`p-3 rounded-xl border shadow-sm ${
-                    isImpact ? "bg-rose-950/50 border-rose-500/30 text-rose-400" : "bg-navy-950 border-white/10 text-gold-500"
+                    isImpact ? "bg-rose-950/50 border-rose-500/30 text-rose-400" : "bg-surface-2 border-border text-gold-500"
                   }`}
                 >
                   <Icon size={20} />
@@ -109,7 +109,7 @@ export default function GoalsPage() {
 
                 <div className="flex-1 space-y-1">
                   <input
-                    className="bg-transparent font-bold text-white text-lg outline-none w-full placeholder:text-slate-200"
+                    className="bg-transparent font-bold text-text text-lg outline-none w-full placeholder:text-text-faint"
                     value={goal.name}
                     onChange={(e) => updateGoal(goal.id, "name", e.target.value)}
                     disabled={readOnly}
@@ -117,7 +117,7 @@ export default function GoalsPage() {
                   />
 
                   <select
-                    className="bg-transparent text-sm text-white outline-none cursor-pointer appearance-none w-full pr-4"
+                    className="bg-transparent text-sm text-text outline-none cursor-pointer appearance-none w-full pr-4"
                     value={goal.type}
                     onChange={(e) => updateGoal(goal.id, "type", e.target.value)}
                     disabled={readOnly}
@@ -129,7 +129,7 @@ export default function GoalsPage() {
                     }}
                   >
                     {GOAL_TYPES.map((o) => (
-                      <option key={o.value} value={o.value} className="bg-navy-900 text-white">
+                      <option key={o.value} value={o.value} className="bg-surface-1 text-text">
                         {o.label}
                       </option>
                     ))}
@@ -137,7 +137,7 @@ export default function GoalsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end bg-navy-950/30 p-3 rounded-lg border border-white/5">
+              <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end bg-surface-2 p-3 rounded-lg border border-border">
                 <div className="w-44">
                   <InputField
                     label={isImpact ? "Valor (Saque)" : "Valor (Marco)"}
@@ -163,7 +163,7 @@ export default function GoalsPage() {
                 {!readOnly && (
                   <button
                     onClick={() => removeGoal(goal.id)}
-                    className="text-slate-200 hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-rose-500/10 ml-2"
+                    className="text-text-muted hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-rose-500/10 ml-2"
                     title="Excluir meta"
                   >
                     <Trash2 size={18} />
@@ -175,7 +175,7 @@ export default function GoalsPage() {
         })}
 
         {goals.length === 0 && (
-          <div className="text-center py-12 px-4 rounded-xl border border-white/5 bg-navy-900/30 text-slate-400">
+          <div className="text-center py-12 px-4 rounded-xl border border-border bg-surface-1 text-text-faint">
             <Flag size={32} className="mx-auto mb-3 opacity-50" />
             <p>Nenhuma meta cadastrada para este cenário.</p>
             {!readOnly && (
