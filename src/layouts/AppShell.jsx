@@ -318,7 +318,6 @@ function UserMenu({ user, onLogout }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
-  const { themePreference, setThemePreference, effectiveTheme } = useTheme();
 
   useClickOutside(menuRef, () => setOpen(false));
 
@@ -391,33 +390,6 @@ function UserMenu({ user, onLogout }) {
               Segurança
             </button>
 
-            {/* ─── Seletor de Tema ─── */}
-            <div className="my-2 border-t border-border" />
-            <div className="px-3 py-2">
-              <span className="text-xs font-medium text-text-muted uppercase tracking-wide">Tema</span>
-              <div className="flex gap-1 mt-2">
-                {[
-                  { value: 'system', icon: Monitor, label: 'Auto' },
-                  { value: 'dark', icon: Moon, label: 'Escuro' },
-                  { value: 'light', icon: Sun, label: 'Claro' },
-                ].map(({ value, icon: Icon, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setThemePreference(value)}
-                    className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                      themePreference === value
-                        ? 'bg-accent/15 text-accent border border-accent/30'
-                        : 'text-text-secondary hover:bg-surface-highlight border border-transparent'
-                    }`}
-                    title={label}
-                  >
-                    <Icon size={16} />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div className="my-2 border-t border-border" />
 
             <button
@@ -438,14 +410,49 @@ function UserMenu({ user, onLogout }) {
 }
 
 function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, isDirty, readOnly }) {
-  const tabs = [
-    { to: "/dashboard/overview", label: "Visão Geral", icon: LayoutDashboard },
-    { to: "/dashboard/assets", label: "Patrimônio", icon: Wallet },
-    { to: "/dashboard/scenarios", label: "Cenários", icon: GitBranch },
-    { to: "/dashboard/goals", label: "Metas", icon: Flag },
-    { to: "/dashboard/succession", label: "Sucessão", icon: Scale },
-    { to: "/dashboard/allocation", label: "Guia de Alocação", icon: PieChart },
-    { to: "/dashboard/settings", label: "Dados do Cliente", icon: UserCircle2 },
+  const { themePreference, effectiveTheme, setThemePreference } = useTheme();
+  const [themePopoverOpen, setThemePopoverOpen] = useState(false);
+  const themePopoverRef = useRef(null);
+
+  useClickOutside(themePopoverRef, () => setThemePopoverOpen(false));
+
+  // Fechar popover com Esc
+  useEffect(() => {
+    if (!themePopoverOpen) return;
+    const handleEsc = (e) => { if (e.key === "Escape") setThemePopoverOpen(false); };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [themePopoverOpen]);
+
+  // Fechar popover ao expandir/colapsar sidebar
+  useEffect(() => { setThemePopoverOpen(false); }, [collapsed]);
+
+  const themeOptions = [
+    { value: 'system', icon: Monitor, label: 'Auto' },
+    { value: 'dark', icon: Moon, label: 'Escuro' },
+    { value: 'light', icon: Sun, label: 'Claro' },
+  ];
+
+  const ThemeIcon = effectiveTheme === 'light' ? Sun : Moon;
+
+  const navGroups = [
+    {
+      title: "Menu Principal",
+      items: [
+        { to: "/dashboard/overview", label: "Visão Geral", icon: LayoutDashboard },
+        { to: "/dashboard/assets", label: "Patrimônio", icon: Wallet },
+        { to: "/dashboard/scenarios", label: "Cenários", icon: GitBranch },
+        { to: "/dashboard/goals", label: "Metas", icon: Flag },
+        { to: "/dashboard/succession", label: "Sucessão", icon: Scale },
+      ],
+    },
+    {
+      title: "Suporte & Dados",
+      items: [
+        { to: "/dashboard/allocation", label: "Guia de Alocação", icon: PieChart },
+        { to: "/dashboard/settings", label: "Dados do Cliente", icon: UserCircle2 },
+      ],
+    },
   ];
 
   const saveDisabled = readOnly || !isDirty;
@@ -492,46 +499,60 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
         </button>
       </div>
 
-      <nav className="flex-1 py-8 space-y-1 overflow-y-auto no-scrollbar px-3">
-        {tabs.map((t) => {
-          const Icon = t.icon;
+      <nav className="flex-1 py-4 overflow-y-auto no-scrollbar px-3">
+        {navGroups.map((group, gi) => (
+          <div key={group.title} className={gi > 0 ? "mt-6" : ""}>
+            {/* Header de grupo — apenas visível no modo expandido */}
+            {!collapsed && (
+              <div className="hidden lg:block px-4 pt-2 pb-3">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-faint select-none">
+                  {group.title}
+                </span>
+              </div>
+            )}
 
-          return (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              className={({ isActive }) =>
-                `w-full flex items-center ${collapsed ? "justify-center" : "gap-4"} px-4 py-3.5 rounded-xl transition-all group relative focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none ${
-                  isActive
-                    ? "text-text bg-surface-2 border border-border"
-                    : "text-text-muted hover:bg-surface-2/60 hover:text-text"
-                }`
-              }
-              title={collapsed ? t.label : undefined}
-              aria-label={t.label}
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Indicador de ativo - traço dourado sutil */}
-                  {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-3/5 w-0.5 bg-accent rounded-r-full"></div>
-                  )}
-                  <Icon
-                    size={22}
-                    className={`shrink-0 transition-colors ${
-                      isActive ? "text-accent" : "group-hover:text-text"
-                    }`}
-                  />
-                  {!collapsed && (
-                    <span className={`hidden lg:block text-[15px] ${isActive ? "font-semibold" : "font-medium"}`}>
-                      {t.label}
-                    </span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          );
-        })}
+            <div className="space-y-0.5">
+              {group.items.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <NavLink
+                    key={t.to}
+                    to={t.to}
+                    className={({ isActive }) =>
+                      `w-full flex items-center ${collapsed ? "justify-center" : "gap-3.5"} px-4 py-3 rounded-xl transition-all group relative focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none ${
+                        isActive
+                          ? "text-text bg-surface-2/80 border border-border/60"
+                          : "text-text-muted hover:bg-surface-2/50 hover:text-text border border-transparent"
+                      }`
+                    }
+                    title={collapsed ? t.label : undefined}
+                    aria-label={t.label}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {/* Indicador de ativo — traço dourado fino */}
+                        {isActive && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2px] bg-accent/50 rounded-r-full" />
+                        )}
+                        <Icon
+                          size={20}
+                          className={`shrink-0 transition-colors ${
+                            isActive ? "text-accent" : "group-hover:text-text"
+                          }`}
+                        />
+                        {!collapsed && (
+                          <span className={`hidden lg:block text-[14px] leading-tight ${isActive ? "font-semibold text-text" : "font-medium"}`}>
+                            {t.label}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="p-4 mx-2 mb-4 space-y-2">
@@ -562,6 +583,73 @@ function MainSidebar({ viewMode, logout, collapsed, onToggleCollapsed, onSave, i
         {!collapsed && (
           <div className="hidden lg:block text-xs text-text-faint px-2">
             Modo: <b className="text-text-muted">{viewMode === "advisor" ? "Advisor" : "Apresentação"}</b>
+          </div>
+        )}
+
+        {/* ─── Seletor de Tema ─── */}
+        {collapsed ? (
+          /* Rail: ícone + popover à direita */
+          <div className="relative flex justify-center" ref={themePopoverRef}>
+            <button
+              type="button"
+              onClick={() => setThemePopoverOpen((v) => !v)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setThemePopoverOpen((v) => !v); } }}
+              className="w-full flex items-center justify-center px-4 py-3.5 rounded-xl text-text-muted hover:bg-surface-2 hover:text-text transition-all group focus-visible:ring-2 focus-visible:ring-accent/40"
+              aria-label="Tema"
+              title="Tema"
+            >
+              <ThemeIcon size={22} className="shrink-0" />
+            </button>
+
+            {themePopoverOpen && (
+              <div
+                className="absolute left-full ml-3 bottom-0 w-[140px] rounded-xl border border-border bg-surface-1/95 backdrop-blur-xl shadow-elevated p-1.5 z-50"
+                role="menu"
+                aria-label="Selecionar tema"
+              >
+                {themeOptions.map(({ value, icon: Icon, label }) => (
+                  <button
+                    key={value}
+                    role="menuitemradio"
+                    aria-checked={themePreference === value}
+                    tabIndex={0}
+                    onClick={() => { setThemePreference(value); setThemePopoverOpen(false); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setThemePreference(value); setThemePopoverOpen(false); } }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      themePreference === value
+                        ? "bg-accent/15 text-accent"
+                        : "text-text-muted hover:bg-surface-2 hover:text-text"
+                    }`}
+                  >
+                    <Icon size={15} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Expandida: segmented control inline */
+          <div className="hidden lg:block px-2">
+            <span className="text-[10px] font-medium text-text-faint uppercase tracking-wider mb-1.5 block">Tema</span>
+            <div className="flex gap-0.5 p-0.5 rounded-lg bg-surface-2 border border-border">
+              {themeOptions.map(({ value, icon: Icon, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setThemePreference(value)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-[11px] font-medium transition-all ${
+                    themePreference === value
+                      ? "bg-surface-3 text-text shadow-soft border border-border"
+                      : "text-text-faint hover:text-text-muted"
+                  }`}
+                  title={label}
+                >
+                  <Icon size={13} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1461,6 +1549,7 @@ export default function AppShell() {
         open={showTour}
         steps={GUIDE_STEPS}
         onClose={handleCloseTour}
+        readOnly={readOnly}
       />
 
       {/* ✅ Hint apontando para o botão de guia */}

@@ -687,10 +687,10 @@ export default function AssetsPage() {
         action={
           !readOnly && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" icon={ScrollText} onClick={addPrevidenciaAsset}>
+              <Button variant="outline" size="sm" icon={ScrollText} onClick={addPrevidenciaAsset} data-guide="add-previdencia">
                 Previdência
               </Button>
-              <Button variant="outline" size="sm" icon={Plus} onClick={addAsset}>
+              <Button variant="outline" size="sm" icon={Plus} onClick={addAsset} data-guide="add-asset">
                 Ativo
               </Button>
             </div>

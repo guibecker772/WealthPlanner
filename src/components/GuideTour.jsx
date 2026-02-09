@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { X, ChevronLeft, ChevronRight, Check, AlertCircle } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Check, AlertCircle, Info } from "lucide-react";
 
-const MAX_RETRIES = 8;
-const RETRY_DELAY = 150;
-const MAX_CONSECUTIVE_FAILURES = 3;
+// Retry: ~2s total (16 tentativas × 120ms)
+const MAX_RETRIES = 16;
+const RETRY_DELAY = 120;
 
 /**
  * Componente de Tour Guiado.
@@ -14,8 +14,9 @@ const MAX_CONSECUTIVE_FAILURES = 3;
  * - open: boolean - controla visibilidade
  * - steps: array de { route, guideKey, title, text }
  * - onClose: () => void
+ * - readOnly: boolean - modo cliente/readOnly (fallback em etapas de edição)
  */
-export default function GuideTour({ open, steps, onClose }) {
+export default function GuideTour({ open, steps, onClose, readOnly = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -23,7 +24,7 @@ export default function GuideTour({ open, steps, onClose }) {
   const [targetEl, setTargetEl] = useState(null);
   const [targetRect, setTargetRect] = useState(null);
   const [notice, setNotice] = useState("");
-  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+  const [stepFailed, setStepFailed] = useState(false);   // fallback: alvo não encontrado
   const [isNavigating, setIsNavigating] = useState(false);
   
   const retryCountRef = useRef(0);
@@ -33,6 +34,9 @@ export default function GuideTour({ open, steps, onClose }) {
   const isLastStep = currentIndex === steps.length - 1;
   const isFirstStep = currentIndex === 0;
 
+  // Etapas de edição que não devem ser guiadas em modo readOnly
+  const EDIT_GUIDE_KEYS = ["add-asset", "add-previdencia", "add-goal", "contribution"];
+
   // Limpar ao fechar
   useEffect(() => {
     if (!open) {
@@ -40,7 +44,7 @@ export default function GuideTour({ open, steps, onClose }) {
       setTargetEl(null);
       setTargetRect(null);
       setNotice("");
-      setConsecutiveFailures(0);
+      setStepFailed(false);
       setIsNavigating(false);
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
@@ -48,9 +52,20 @@ export default function GuideTour({ open, steps, onClose }) {
     }
   }, [open]);
 
-  // Buscar elemento alvo com retry
+  // Buscar elemento alvo com retry (~2s total)
   const findTarget = useCallback(() => {
     if (!currentStep) return;
+
+    // Em readOnly, etapas de edição mostram fallback direto
+    if (readOnly && EDIT_GUIDE_KEYS.includes(currentStep.guideKey)) {
+      setTargetEl(null);
+      setTargetRect(null);
+      setStepFailed(true);
+      setNotice("Indisponível neste modo (somente Advisor).");
+      setIsNavigating(false);
+      retryCountRef.current = 0;
+      return;
+    }
     
     const el = document.querySelector(`[data-guide="${currentStep.guideKey}"]`);
     
@@ -60,7 +75,7 @@ export default function GuideTour({ open, steps, onClose }) {
       setTargetRect(rect);
       el.scrollIntoView({ block: "center", behavior: "smooth" });
       setNotice("");
-      setConsecutiveFailures(0);
+      setStepFailed(false);
       setIsNavigating(false);
       retryCountRef.current = 0;
     } else {
@@ -68,32 +83,16 @@ export default function GuideTour({ open, steps, onClose }) {
       if (retryCountRef.current < MAX_RETRIES) {
         retryTimeoutRef.current = setTimeout(findTarget, RETRY_DELAY);
       } else {
-        // Não encontrou após todas tentativas
+        // Não encontrou após ~2s — NÃO pular: mostrar fallback
         setTargetEl(null);
         setTargetRect(null);
-        setNotice("Etapa não encontrada — pulando");
+        setStepFailed(true);
+        setNotice("Esta etapa não está disponível neste momento.");
         setIsNavigating(false);
         retryCountRef.current = 0;
-        
-        const newFailures = consecutiveFailures + 1;
-        setConsecutiveFailures(newFailures);
-        
-        if (newFailures >= MAX_CONSECUTIVE_FAILURES) {
-          setNotice("Não foi possível localizar alguns elementos. Encerrando tour.");
-          setTimeout(() => onClose(), 2000);
-        } else {
-          // Auto-avançar após 1.5s
-          setTimeout(() => {
-            if (currentIndex < steps.length - 1) {
-              setCurrentIndex((i) => i + 1);
-            } else {
-              onClose();
-            }
-          }, 1500);
-        }
       }
     }
-  }, [currentStep, consecutiveFailures, currentIndex, steps.length, onClose]);
+  }, [currentStep, readOnly]);
 
   // Navegar para rota e buscar elemento
   useEffect(() => {
@@ -280,8 +279,25 @@ export default function GuideTour({ open, steps, onClose }) {
           {currentStep?.text || ""}
         </p>
 
-        {/* Aviso de elemento não encontrado */}
-        {notice && (
+        {/* Fallback: etapa não disponível — NÃO pula, mostra mensagem + Continuar */}
+        {stepFailed && notice && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs mb-3">
+            <Info size={14} className="shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span>{notice}</span>
+              <button
+                type="button"
+                onClick={handleNext}
+                className="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold transition-all text-xs"
+              >
+                Continuar <ChevronRight size={12} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Aviso não-bloqueante (navegando, etc) */}
+        {!stepFailed && notice && (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs mb-3">
             <AlertCircle size={14} />
             {notice}
@@ -319,23 +335,25 @@ export default function GuideTour({ open, steps, onClose }) {
             >
               Sair
             </button>
-            <button
-              type="button"
-              onClick={handleNext}
-              className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-accent text-background text-sm font-bold hover:bg-accent/90 transition-all"
-            >
-              {isLastStep ? (
-                <>
-                  Concluir
-                  <Check size={16} />
-                </>
-              ) : (
-                <>
-                  Próximo
-                  <ChevronRight size={16} />
-                </>
-              )}
-            </button>
+            {!stepFailed && (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-accent text-background text-sm font-bold hover:bg-accent/90 transition-all"
+              >
+                {isLastStep ? (
+                  <>
+                    Concluir
+                    <Check size={16} />
+                  </>
+                ) : (
+                  <>
+                    Próximo
+                    <ChevronRight size={16} />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
