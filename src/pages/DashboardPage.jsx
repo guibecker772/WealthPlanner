@@ -1,21 +1,6 @@
 // src/pages/DashboardPage.jsx
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
-import {
-  ComposedChart,
-  Area,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  ReferenceDot,
-  ReferenceArea,
-  Label,
-} from "recharts";
 import {
   Target,
   TrendingUp,
@@ -45,7 +30,7 @@ import {
   nominalToRealReturn,
   toNumber,
 } from "../utils/format";
-import { prependSnapshotIfMissing } from "../utils/series/prependSnapshotIfMissing";
+import { ProjectionChart } from "../components/charts";
 
 import MonthlyTrackingCard from "../components/tracking/MonthlyTrackingCard";
 import AlternativeScenariosSection, {
@@ -79,577 +64,6 @@ function buildYearOptions({ trackingStartYear, currentYear, currentAge, retireme
   const years = [];
   for (let y = start; y <= end; y++) years.push(y);
   return years;
-}
-
-function normalizeText(s) {
-  return (s ?? "")
-    .toString()
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function safeNum(v, fallback = 0) {
-  const n = Number(String(v ?? "").replace(",", "."));
-  return Number.isFinite(n) ? n : fallback;
-}
-
-// -------------------------
-// Tooltip custom - Premium design com tokens
-// -------------------------
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload || !payload.length) return null;
-
-  // Séries principais com cores tokenizadas (CSS vars convertidas para valores)
-  const seriesConfig = {
-    wealthOriginal: { label: "Plano original", colorClass: "bg-chart-1", order: 1 },
-    wealthAdjusted: { label: "Plano atualizado", colorClass: "bg-chart-2", order: 2 },
-    wealthConsumption: { label: "Consumo Total", colorClass: "bg-chart-4", order: 3 },
-    wealthPreservation: { label: "Preservação", colorClass: "bg-chart-3", order: 4 },
-  };
-
-  // Filtra e ordena as séries de patrimônio (exclui chartCashIn para exibir separadamente)
-  const wealthSeries = payload
-    .filter((p) => p.dataKey !== "chartCashIn" && seriesConfig[p.dataKey])
-    .sort((a, b) => (seriesConfig[a.dataKey]?.order || 99) - (seriesConfig[b.dataKey]?.order || 99));
-
-  const cashIn = payload.find((p) => p.dataKey === "chartCashIn");
-
-  return (
-    <div className="bg-surface-2 border border-border p-4 rounded-xl shadow-elevated backdrop-blur-md relative z-50 min-w-[220px]">
-      <p className="text-text-muted text-sm mb-3 font-medium">Aos {label} anos</p>
-
-      {/* Séries de patrimônio */}
-      <div className="space-y-2">
-        {wealthSeries.map((series) => {
-          const config = seriesConfig[series.dataKey];
-          const value = series.value;
-          
-          return (
-            <div key={series.dataKey} className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <span className={`w-3 h-[3px] rounded-full ${config?.colorClass || "bg-accent"}`} />
-                <span className="text-xs text-text-muted font-medium">
-                  {config?.label || series.name || series.dataKey}
-                </span>
-              </div>
-              <span className="text-sm font-display font-bold text-text tabular-nums">
-                {value != null && Number.isFinite(value) ? formatCurrencyBR(value) : "—"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Aporte extraordinário */}
-      {cashIn && cashIn.value > 0 && (
-        <div className="mt-3 pt-3 border-t border-divider">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-xs text-success font-medium">Aporte extraordinário</span>
-            <span className="text-sm font-display font-bold text-success tabular-nums">
-              + {formatCurrencyBR(cashIn.value)}
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// -------------------------
-// Legenda/Guia
-// -------------------------
-
-// Swatch components for legend (declared outside to avoid recreation during render)
-const LineSwatch = ({ className, style }) => (
-  <span className={`inline-block w-8 h-[3px] rounded-full ${className || ""}`} style={style} />
-);
-
-const DotSwatch = ({ className }) => (
-  <span className={`inline-block w-3 h-3 rounded-full ${className}`} />
-);
-
-function ChartLegendFooter({
-  showAdjusted,
-  hasCashIn,
-  retirementAge,
-  contributionEndAge,
-  goals = [],
-  timelineRules = [],
-  extraSeries = [],
-}) {
-  return (
-    <div className="mt-4 space-y-3">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-semibold text-text-secondary">
-        <div className="flex items-center gap-2">
-          <LineSwatch className="bg-accent" />
-          <span>Plano original</span>
-        </div>
-
-        {showAdjusted && (
-          <div className="flex items-center gap-2">
-            <LineSwatch className="bg-sky-400" />
-            <span>Plano atualizado</span>
-          </div>
-        )}
-
-        {/* Séries extras (cenários alternativos) */}
-        {extraSeries.map((extra) => (
-          <div key={extra.key} className="flex items-center gap-2">
-            <LineSwatch 
-              style={{ 
-                backgroundColor: extra.color,
-                backgroundImage: extra.strokeDasharray ? `repeating-linear-gradient(90deg, ${extra.color} 0, ${extra.color} 4px, transparent 4px, transparent 8px)` : undefined,
-              }} 
-            />
-            <span>{extra.name}</span>
-          </div>
-        ))}
-
-        {hasCashIn && (
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded-sm bg-emerald-500" />
-            <span>Aporte extraordinário (cash-in)</span>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-text-secondary">
-        <div className="flex items-center gap-2">
-          <DotSwatch className="bg-emerald-500 border border-white" />
-          <span>Ponto de evento (cash-in)</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <LineSwatch className="bg-emerald-500" />
-          <span>Aposentadoria (idade {retirementAge})</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <LineSwatch className="bg-orange-400" />
-          <span>Fim dos aportes (idade {contributionEndAge})</span>
-        </div>
-
-        {goals.length > 0 && (
-          <div className="flex items-center gap-2">
-            <LineSwatch className="bg-rose-500" />
-            <span>Metas (linhas vermelhas)</span>
-          </div>
-        )}
-      </div>
-
-      {timelineRules.length > 0 && (
-        <div className="rounded-xl border border-border bg-background-secondary/30 p-3">
-          <div className="text-xs font-extrabold text-text-primary mb-2">
-            Linha do tempo de aportes & resgates (cenário)
-          </div>
-          <div className="space-y-1 text-xs text-text-secondary">
-            {timelineRules.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="font-bold text-text-primary">
-                    {r.startAge}–{r.endAge}
-                  </span>{" "}
-                  <span className="truncate">
-                    • {r.monthlyValue >= 0 ? "Aporte" : "Resgate"}{" "}
-                    <b className={r.monthlyValue >= 0 ? "text-success" : "text-danger"}>
-                      {r.monthlyValue >= 0 ? "+" : "-"} {formatCurrencyBR(Math.abs(r.monthlyValue))}/mês
-                    </b>
-                  </span>
-                </div>
-                <span className="text-[11px] px-2 py-1 rounded-full border border-border bg-surface/40">
-                  {r.kindLabel}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// -------------------------
-// Timeline rules
-// -------------------------
-function readContributionRules(clientData) {
-  const raw =
-    (Array.isArray(clientData?.contributionTimeline) && clientData.contributionTimeline) ||
-    (Array.isArray(clientData?.contributionRanges) && clientData.contributionRanges) ||
-    [];
-
-  const rules = raw
-    .filter((r) => r && r.enabled !== false)
-    .map((r, idx) => {
-      const startAge = safeInt(r.startAge ?? r.fromAge ?? r.from ?? r.inicio ?? r.dos, NaN);
-      const endAge = safeInt(r.endAge ?? r.toAge ?? r.to ?? r.fim ?? r.ate, NaN);
-
-      const monthlyValue = safeNum(
-        r.monthlyValue ?? r.value ?? r.amount ?? r.aporteMensal ?? r.valorMensal,
-        NaN
-      );
-
-      const kindRaw = normalizeText(r.kind ?? r.type ?? r.mode ?? "");
-      const isWithdrawal =
-        r.isWithdrawal === true ||
-        r.withdrawal === true ||
-        kindRaw.includes("resgate") ||
-        kindRaw.includes("withdraw") ||
-        (Number.isFinite(monthlyValue) && monthlyValue < 0);
-
-      const mv = Number.isFinite(monthlyValue) ? monthlyValue : 0;
-      const monthly = isWithdrawal ? -Math.abs(mv) : mv;
-
-      const kindLabel =
-        kindRaw.includes("financ") ? "Financiamento" :
-        kindRaw.includes("consorc") ? "Consórcio" :
-        kindRaw.includes("aporte") ? "Aporte temporário" :
-        kindRaw.includes("resgate") ? "Resgate" :
-        "Período";
-
-      if (!Number.isFinite(startAge) || !Number.isFinite(endAge)) return null;
-      if (endAge < startAge) return null;
-
-      return {
-        id: r.id ?? `rule_${idx}_${startAge}_${endAge}`,
-        startAge,
-        endAge,
-        monthlyValue: monthly,
-        kindLabel,
-      };
-    })
-    .filter(Boolean);
-
-  rules.sort((a, b) => a.startAge - b.startAge);
-  return rules;
-}
-
-// -------------------------
-// Gráfico
-// -------------------------
-function WealthEvolutionChart({ seriesOriginal, seriesAdjusted, clientData, showAdjusted, extraSeries = [], baselineWealthBRL = 0, theme = 'dark' }) {
-  const allGoals = (clientData?.financialGoals || []).filter((g) => (g?.value || 0) > 0);
-
-  const nowAge = Number(clientData?.currentAge ?? clientData?.idadeAtual);
-  // ✅ Normaliza idade atual para inteiro (padrão do gráfico, XAxis usa allowDecimals={false})
-  const currentAgeInt = Number.isFinite(nowAge) ? Math.floor(nowAge) : 0;
-  const retirementAge = clientData?.retirementAge ?? clientData?.endContributionsAge ?? 60;
-  const contributionEndAge = clientData?.contributionEndAge ?? clientData?.endContributionsAge ?? 60;
-
-  const timelineRules = useMemo(() => readContributionRules(clientData), [clientData]);
-
-  const cashInMap = useMemo(() => {
-    const map = {};
-    const events = clientData?.cashInEvents || [];
-
-    events.forEach((event) => {
-      if (event?.enabled === false) return;
-      const ageStr = String(event.age);
-      const value = Number(event.value) || 0;
-      if (!ageStr || value <= 0) return;
-      map[ageStr] = (map[ageStr] || 0) + value;
-    });
-
-    return map;
-  }, [clientData?.cashInEvents]);
-
-  const chartData = useMemo(() => {
-    // ✅ Aplicar snapshot em todas as séries (baseline e alternativos)
-    // Garante que todas começam com o mesmo ponto em age = currentAgeInt
-    const snapshotWealth = Number.isFinite(baselineWealthBRL) && baselineWealthBRL > 0 
-      ? baselineWealthBRL 
-      : 0;
-    
-    const rawO = Array.isArray(seriesOriginal) ? seriesOriginal : [];
-    const rawA = Array.isArray(seriesAdjusted) ? seriesAdjusted : [];
-    
-    // Prepend snapshot se necessário (anti-duplicação já dentro do helper)
-    const o = snapshotWealth > 0 && currentAgeInt > 0 
-      ? prependSnapshotIfMissing(rawO, currentAgeInt, snapshotWealth)
-      : rawO;
-    const a = snapshotWealth > 0 && currentAgeInt > 0 
-      ? prependSnapshotIfMissing(rawA, currentAgeInt, snapshotWealth)
-      : rawA;
-    
-    if (!o.length && !a.length) return [];
-
-    const byAge = new Map();
-
-    o.forEach((p) => {
-      const age = Number(p?.age);
-      if (!Number.isFinite(age)) return;
-      byAge.set(age, { age, wealthOriginal: p?.financial ?? p?.wealth ?? 0 });
-    });
-
-    a.forEach((p) => {
-      const age = Number(p?.age);
-      if (!Number.isFinite(age)) return;
-      const prev = byAge.get(age) || { age };
-      byAge.set(age, { ...prev, wealthAdjusted: p?.financial ?? p?.wealth ?? 0 });
-    });
-
-    // ✅ Adiciona séries extras (cenários alternativos) com snapshot
-    extraSeries.forEach((extra) => {
-      if (!extra?.data) return;
-      // Aplicar snapshot nas séries alternativas também
-      const extraData = snapshotWealth > 0 && currentAgeInt > 0
-        ? prependSnapshotIfMissing(extra.data, currentAgeInt, snapshotWealth)
-        : extra.data;
-      
-      extraData.forEach((p) => {
-        const age = Number(p?.age);
-        if (!Number.isFinite(age)) return;
-        const prev = byAge.get(age) || { age };
-        byAge.set(age, { ...prev, [extra.key]: p?.financial ?? p?.wealth ?? 0 });
-      });
-    });
-
-    const merged = Array.from(byAge.values()).sort((x, y) => x.age - y.age);
-
-    return merged.map((point) => ({
-      ...point,
-      chartCashIn: cashInMap[String(point.age)] || null,
-    }));
-  }, [seriesOriginal, seriesAdjusted, cashInMap, extraSeries, currentAgeInt, baselineWealthBRL]);
-
-  if (!chartData.length) {
-    return (
-      <div className="h-full w-full flex items-center justify-center text-text-muted text-sm">
-        Sem dados para projeção (verifique idade atual, ativos e premissas).
-      </div>
-    );
-  }
-
-  const maxCashIn = Math.max(0, ...Object.values(cashInMap));
-  const maxO = Math.max(...chartData.map((d) => d.wealthOriginal || 0), 0);
-  const maxA = Math.max(...chartData.map((d) => d.wealthAdjusted || 0), 0);
-  
-  // Inclui séries extras no cálculo do domínio Y
-  let maxExtra = 0;
-  extraSeries.forEach((extra) => {
-    const maxE = Math.max(...chartData.map((d) => d[extra.key] || 0), 0);
-    maxExtra = Math.max(maxExtra, maxE);
-  });
-  
-  const yDomainMax = Math.max(maxCashIn, maxO, maxA, maxExtra) * 1.1;
-
-  // Cores tokenizadas para charts (adaptadas ao tema)
-  // Dark: cores mais claras para bom contraste em fundo escuro
-  // Light: cores mais escuras para bom contraste em fundo claro
-  const isLight = theme === 'light';
-  
-  const accentColor = isLight ? "#B8860B" : "#E9B835";   // Gold (darker in light)
-  const adjustedColor = isLight ? "#1E6FA6" : "#33A8E5"; // Blue (darker in light)
-  const successColor = isLight ? "#1E7A4D" : "#2DAB70";  // Green (darker in light)
-  const gridColor = isLight ? "rgba(40, 30, 15, 0.12)" : "rgba(31, 37, 52, 0.6)";
-  const axisTextColor = isLight ? "#5C6370" : "#778296";
-
-  const cashInEvents = (clientData?.cashInEvents || []).filter(
-    (e) => e?.enabled !== false && e?.age && Number(e.value) > 0
-  );
-  const hasCashIn = cashInEvents.length > 0;
-
-  const minAge = Math.min(...chartData.map((d) => Number(d.age)));
-  const maxAge = Math.max(...chartData.map((d) => Number(d.age)));
-  const ticks = Array.from({ length: maxAge - minAge + 1 }, (_, i) => minAge + i);
-
-  const rulesInRange = timelineRules.filter((r) => r.endAge >= minAge && r.startAge <= maxAge);
-
-  return (
-    <div className="w-full">
-      <div className="h-[560px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 18, right: 22, left: 10, bottom: 10 }}>
-            <defs>
-              <linearGradient id="colorOriginal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopOpacity={0.28} stopColor={accentColor} />
-                <stop offset="100%" stopOpacity={0.05} stopColor={accentColor} />
-              </linearGradient>
-
-              <linearGradient id="colorAdjusted" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopOpacity={0.20} stopColor={adjustedColor} />
-                <stop offset="100%" stopOpacity={0.04} stopColor={adjustedColor} />
-              </linearGradient>
-            </defs>
-
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
-
-            <XAxis
-              dataKey="age"
-              type="number"
-              domain={[minAge, maxAge]}
-              ticks={ticks}                 // ✅ ano a ano
-              interval={0}                  // ✅ não pula de 25 em 25
-              tick={{ fill: axisTextColor, fontSize: 12, fontFamily: "Inter" }}
-              axisLine={{ stroke: gridColor }}
-              tickLine={false}
-              allowDecimals={false}
-              minTickGap={6}
-            />
-
-            <YAxis
-              tickFormatter={(val) => `${(val / 1000000).toFixed(1)}M`}
-              tick={{ fill: axisTextColor, fontSize: 12, fontFamily: "Inter" }}
-              axisLine={false}
-              tickLine={false}
-              domain={[0, yDomainMax]}
-            />
-
-            <Tooltip cursor={false} content={<CustomTooltip />} />
-
-            {/* ✅ Faixas do timeline */}
-            {rulesInRange.map((r) => (
-              <ReferenceArea
-                key={`rule_${r.id}`}
-                x1={Math.max(minAge, r.startAge)}
-                x2={Math.min(maxAge, r.endAge)}
-                ifOverflow="hidden"
-                fill={r.monthlyValue >= 0 ? "rgba(212,175,55,0.08)" : "rgba(244,63,94,0.08)"}
-                strokeOpacity={0}
-              />
-            ))}
-
-            {/* ✅ Linha "AGORA" */}
-            {Number.isFinite(nowAge) && nowAge >= minAge && nowAge <= maxAge && (
-              <ReferenceLine
-                x={nowAge}
-                stroke="rgba(163, 177, 198, 0.4)"
-                strokeDasharray="4 4"
-                label={{
-                  value: "Agora",
-                  position: "top",
-                  fill: "rgba(163, 177, 198, 0.7)",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: "Inter",
-                }}
-              />
-            )}
-
-            <Bar
-              dataKey="chartCashIn"
-              name="Aporte extraordinário"
-              fill={successColor}
-              barSize={7}
-              radius={[6, 6, 0, 0]}
-            />
-
-            <Area
-              type="monotone"
-              dataKey="wealthOriginal"
-              name="Plano original"
-              stroke={accentColor}
-              strokeWidth={3}
-              fill="url(#colorOriginal)"
-              activeDot={{ r: 6, stroke: accentColor, strokeWidth: 2, fill: "#0A0C14" }}
-            />
-
-            {showAdjusted && (
-              <Area
-                type="monotone"
-                dataKey="wealthAdjusted"
-                name="Plano atualizado"
-                stroke={adjustedColor}
-                strokeWidth={3}
-                fill="url(#colorAdjusted)"
-                activeDot={{ r: 6, stroke: adjustedColor, strokeWidth: 2, fill: "#0A0C14" }}
-              />
-            )}
-
-            {/* Linhas extras para cenários alternativos */}
-            {extraSeries.map((extra) => (
-              <Line
-                key={extra.key}
-                type="monotone"
-                dataKey={extra.key}
-                name={extra.name}
-                stroke={extra.color}
-                strokeWidth={2}
-                strokeDasharray={extra.strokeDasharray || "0"}
-                dot={false}
-                activeDot={{ r: 5, stroke: extra.color, strokeWidth: 2, fill: "#0A0C14" }}
-              />
-            ))}
-
-            <ReferenceLine
-              x={retirementAge}
-              stroke={successColor}
-              strokeDasharray="5 5"
-              label={{
-                value: "Aposentadoria",
-                position: "top",
-                fill: successColor,
-                fontSize: 11,
-                fontWeight: 700,
-                fontFamily: "Inter",
-              }}
-            />
-
-            <ReferenceLine
-              x={contributionEndAge}
-              stroke="#F5A623"
-              strokeDasharray="3 3"
-              label={{
-                value: "Fim aportes",
-                position: "insideTopLeft",
-                fill: "#F5A623",
-                fontSize: 11,
-                fontWeight: 700,
-                angle: -90,
-                offset: 15,
-                fontFamily: "Inter",
-              }}
-            />
-
-            {cashInEvents.map((event, index) => {
-              const age = Number(event.age);
-              if (!Number.isFinite(age)) return null;
-
-              const row = chartData.find((p) => Number(p.age) === age);
-              const y = (showAdjusted ? row?.wealthAdjusted : null) ?? row?.wealthOriginal ?? 0;
-
-              return (
-                <ReferenceDot
-                  key={`cashin_${index}`}
-                  x={age}
-                  y={y}
-                  r={7}
-                  fill={successColor}
-                  stroke="#F3F6FA"
-                  strokeWidth={2}
-                />
-              );
-            })}
-
-            {allGoals.map((g) => (
-              <ReferenceLine key={g.id} x={g.age} stroke="#D94444" strokeDasharray="3 3" strokeOpacity={0.6}>
-                <Label
-                  value={g.name}
-                  position="insideTop"
-                  angle={-90}
-                  fill="#D94444"
-                  fontSize={10}
-                  offset={20}
-                  fontFamily="Inter"
-                />
-              </ReferenceLine>
-            ))}
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-
-      <ChartLegendFooter
-        showAdjusted={showAdjusted}
-        hasCashIn={hasCashIn}
-        retirementAge={retirementAge}
-        contributionEndAge={contributionEndAge}
-        goals={allGoals}
-        timelineRules={timelineRules}
-        extraSeries={extraSeries}
-      />
-    </div>
-  );
 }
 
 // -------------------------
@@ -715,11 +129,15 @@ export default function DashboardPage() {
   // Estado para modal do Relatório PDF
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   
-  // Estado para visibilidade dos cenários alternativos no gráfico
-  const [alternativeChartVisibility, setAlternativeChartVisibility] = useState({
-    consumption: false,
-    preservation: false,
-  });
+  // PR5: Single source of truth — visibilidade de séries (olho ↔ legenda ↔ chart)
+  const [visibleSeriesIds, setVisibleSeriesIds] = useState(() => new Set(["wealthOriginal", "wealthAdjusted"]));
+  const [showEventsLifted, setShowEventsLifted] = useState(false);
+
+  // Derive alternativeChartVisibility for AlternativeScenariosSection compat
+  const alternativeChartVisibility = useMemo(() => ({
+    consumption: visibleSeriesIds.has("wealthConsumption"),
+    preservation: visibleSeriesIds.has("wealthPreservation"),
+  }), [visibleSeriesIds]);
 
   // Estado para toggle "Considerar Metas e Cenários" nos cenários alternativos
   const [includeImpactsInAltScenarios, setIncludeImpactsInAltScenarios] = useState(false);
@@ -731,12 +149,19 @@ export default function DashboardPage() {
     includeImpactsInAltScenarios
   );
 
-  // Handler para toggle de visibilidade no gráfico
+  // PR5: Handler para toggle de visibilidade no gráfico (modifica visibleSeriesIds)
   const handleToggleChartVisibility = useCallback((modeKey, visible) => {
-    setAlternativeChartVisibility((prev) => ({
-      ...prev,
-      [modeKey]: visible,
-    }));
+    const seriesId = modeKey === "consumption" ? "wealthConsumption" : "wealthPreservation";
+    setVisibleSeriesIds((prev) => {
+      const next = new Set(prev);
+      if (visible) {
+        next.add(seriesId);
+      } else {
+        if (next.size <= 1) return prev; // anchor: can't empty the chart
+        next.delete(seriesId);
+      }
+      return next;
+    });
   }, []);
 
   // Handler para toggle "Considerar Metas e Cenários"
@@ -761,12 +186,14 @@ export default function DashboardPage() {
       updateField("scenarioName", scenarioName);
     }
 
-    // Se showOnChart, ativa a visualização
+    // Se showOnChart, ativa a visualização (PR5: via visibleSeriesIds)
     if (showOnChart) {
-      setAlternativeChartVisibility((prev) => ({
-        ...prev,
-        [scenarioMode]: true,
-      }));
+      const seriesId = scenarioMode === "consumption" ? "wealthConsumption" : "wealthPreservation";
+      setVisibleSeriesIds((prev) => {
+        const next = new Set(prev);
+        next.add(seriesId);
+        return next;
+      });
     }
 
     // Feedback
@@ -806,6 +233,16 @@ const baseKpis = engineOutput?.kpis || {};
   }, [baseKpis]);
 
   const showTracking = mode === "tracking";
+
+  // PR5: Reset visibility on mode switch
+  const prevShowTrackingRef = useRef(showTracking);
+  useEffect(() => {
+    if (prevShowTrackingRef.current !== showTracking) {
+      prevShowTrackingRef.current = showTracking;
+      setVisibleSeriesIds(new Set(["wealthOriginal", "wealthAdjusted"]));
+      setShowEventsLifted(false);
+    }
+  }, [showTracking]);
 
   const scenarioTracking = trackingByScenario?.[scenarioId] || null;
   const startYearFromTracking = useMemo(() => {
@@ -1354,7 +791,7 @@ const seriesAdjusted = showTracking
         )}
 
         <Card title={showTracking ? "Evolução Patrimonial (Original vs Atualizado)" : "Evolução Patrimonial Projetada"}>
-          <WealthEvolutionChart
+          <ProjectionChart
             seriesOriginal={seriesOriginal}
             seriesAdjusted={seriesAdjusted}
             clientData={clientData}
@@ -1362,6 +799,11 @@ const seriesAdjusted = showTracking
             extraSeries={showTracking ? [] : alternativeExtraSeries}
             baselineWealthBRL={engineOutput?.kpis?.baselineWealthBRL ?? 0}
             theme={effectiveTheme}
+            mode={showTracking ? "tracking" : "simulation"}
+            visibleSeriesIds={visibleSeriesIds}
+            onVisibleSeriesIdsChange={setVisibleSeriesIds}
+            showEvents={showEventsLifted}
+            onShowEventsChange={setShowEventsLifted}
           />
         </Card>
 

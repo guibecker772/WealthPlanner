@@ -210,6 +210,14 @@ function ScenarioModeCard({
         <button
           onClick={onToggleChart}
           disabled={isImpossible}
+          aria-label={
+            isImpossible
+              ? "Indisponível para este cenário/dados"
+              : isShowingOnChart
+              ? `Ocultar ${label} do gráfico`
+              : `Ver ${label} no gráfico`
+          }
+          aria-pressed={!isImpossible ? isShowingOnChart : undefined}
           className={`p-2.5 rounded-xl border transition ${
             isImpossible
               ? "border-border text-text-muted cursor-not-allowed"
@@ -217,7 +225,13 @@ function ScenarioModeCard({
               ? `border-${accentColor}-500/50 bg-${accentColor}-500/10 ${iconColor}`
               : "border-border text-text-secondary hover:border-accent/50 hover:text-text-primary"
           }`}
-          title={isShowingOnChart ? "Ocultar do gráfico" : "Ver no gráfico"}
+          title={
+            isImpossible
+              ? "Indisponível para este cenário/dados"
+              : isShowingOnChart
+              ? "Ocultar do gráfico"
+              : "Ver no gráfico"
+          }
         >
           {isShowingOnChart ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
@@ -431,7 +445,8 @@ export function useAlternativeScenariosSeries(clientData, chartVisibility, inclu
   const extraSeries = useMemo(() => {
     const series = [];
 
-    if (chartVisibility.consumption && scenarios.consumption?.projectionSeries?.series) {
+    // PR5: Always include available series — visibility controlled upstream via visibleSeriesIds
+    if (scenarios.consumption?.projectionSeries?.series) {
       series.push({
         key: "wealthConsumption",
         name: "Consumo Total",
@@ -441,7 +456,7 @@ export function useAlternativeScenariosSeries(clientData, chartVisibility, inclu
       });
     }
 
-    if (chartVisibility.preservation && scenarios.preservation?.projectionSeries?.series) {
+    if (scenarios.preservation?.projectionSeries?.series) {
       series.push({
         key: "wealthPreservation",
         name: "Preservação",
@@ -452,7 +467,7 @@ export function useAlternativeScenariosSeries(clientData, chartVisibility, inclu
     }
 
     return series;
-  }, [scenarios, chartVisibility]);
+  }, [scenarios]);
 
   return { scenarios, extraSeries };
 }
