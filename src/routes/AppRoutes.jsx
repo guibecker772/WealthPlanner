@@ -1,4 +1,4 @@
-// src/routes/AppRoutes.jsx
+﻿// src/routes/AppRoutes.jsx
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
@@ -15,18 +15,21 @@ import ScenariosPage from "../pages/ScenariosPage.jsx";
 import GoalsPage from "../pages/GoalsPage.jsx";
 import SuccessionPage from "../pages/SuccessionPage.jsx";
 import SettingsPage from "../pages/SettingsPage.jsx";
-// Usando a nova versão step-by-step do Guia de Alocação
+// Usando a nova versao step-by-step do Guia de Alocacao
 import AllocationGuidePage from "../pages/AllocationGuidePageV2.jsx";
 
 import AccountPage from "../pages/AccountPage.jsx";
 import SecurityPage from "../pages/SecurityPage.jsx";
+import PrivateWealthLinkPage from "../pages/integrations/PrivateWealthLinkPage.jsx";
+import PrivateWealthOpenPage from "../pages/integrations/PrivateWealthOpenPage.jsx";
+import PrivateWealthExportPage from "../pages/integrations/PrivateWealthExportPage.jsx";
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
 
-      {/* públicas */}
+      {/* publicas */}
       <Route
         path="/login"
         element={
@@ -38,6 +41,10 @@ export default function AppRoutes() {
 
       {/* privadas */}
       <Route element={<RequireAuth />}>
+        <Route path="/integrations/link" element={<PrivateWealthLinkPage />} />
+        <Route path="/integrations/open" element={<PrivateWealthOpenPage />} />
+        <Route path="/integrations/export" element={<PrivateWealthExportPage />} />
+
         <Route path="/dashboard" element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard/overview" replace />} />
           <Route path="overview" element={<DashboardPage />} />

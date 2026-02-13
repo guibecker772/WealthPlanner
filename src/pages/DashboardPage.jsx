@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.jsx
 import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import {
   Target,
   TrendingUp,
@@ -38,6 +38,7 @@ import AlternativeScenariosSection, {
 } from "../components/scenarios/AlternativeScenariosSection";
 import ReportBuilderModal from "../components/reports/ReportBuilderModal";
 import OnboardingChecklist, { getCompleteness } from "../components/OnboardingChecklist";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 // -------------------------
 // Helpers
@@ -102,6 +103,8 @@ function StyledKPICard({ label, value, subtext, icon: Icon, isHero }) {
 // PÁGINA PRINCIPAL
 // -------------------------
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const ctx = useOutletContext() || {};
   const {
     clientData,
@@ -128,6 +131,7 @@ export default function DashboardPage() {
   
   // Estado para modal do Relatório PDF
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [preferredReportVersion, setPreferredReportVersion] = useState(null);
   
   // PR5: Single source of truth — visibilidade de séries (olho ↔ legenda ↔ chart)
   const [visibleSeriesIds, setVisibleSeriesIds] = useState(() => new Set(["wealthOriginal", "wealthAdjusted"]));
@@ -345,6 +349,38 @@ const baseKpis = engineOutput?.kpis || {};
     };
   }, [tracking?.yearSummary, clientData]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const clientIdParam = searchParams.get("clientId");
+    if (!clientIdParam) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("clientId");
+    const redirectPath = `/dashboard/overview${nextParams.toString() ? `?${nextParams.toString()}` : ""}`;
+
+    window.location.replace(
+      `/integrations/open?clientId=${encodeURIComponent(clientIdParam)}&redirect=${encodeURIComponent(redirectPath)}`
+    );
+  }, [searchParams, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (searchParams.has("clientId")) return;
+
+    const openExport = searchParams.get("openExport");
+    const template = (searchParams.get("template") || "").toLowerCase();
+    if (openExport !== "1" || template !== "premium") return;
+
+    setPreferredReportVersion("v2");
+    setIsReportModalOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("openExport");
+    nextParams.delete("template");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams, user]);
+
   // ✅ EM TRACKING: original = planejado ancorado; adjusted = real ancorado
   // Note: trackingOriginalSeries and trackingAdjustedSeries are preserved for future use
   // const trackingOriginalSeries =
@@ -440,7 +476,10 @@ const seriesAdjusted = showTracking
 
           {/* Botão Gerar Relatório PDF */}
           <button
-            onClick={() => setIsReportModalOpen(true)}
+            onClick={() => {
+              setPreferredReportVersion(null);
+              setIsReportModalOpen(true);
+            }}
             className="px-4 py-3 text-sm font-bold flex items-center gap-2 rounded-2xl border border-border bg-surface/30 text-text-secondary hover:text-text-primary hover:border-accent/50 hover:bg-accent/5 transition"
             title="Gerar Relatório PDF personalizado"
             data-guide="export-pdf"
@@ -824,10 +863,14 @@ const seriesAdjusted = showTracking
       {/* Modal do Relatório PDF */}
       <ReportBuilderModal
         isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
+        onClose={() => {
+          setIsReportModalOpen(false);
+          setPreferredReportVersion(null);
+        }}
         clientData={clientData}
         kpis={kpisNormalized}
         scenarioId={scenarioId}
+        preferredReportVersion={preferredReportVersion}
       />
     </div>
   );

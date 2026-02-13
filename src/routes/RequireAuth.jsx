@@ -1,4 +1,4 @@
-// src/routes/RequireAuth.jsx
+﻿// src/routes/RequireAuth.jsx
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -16,9 +16,10 @@ export default function RequireAuth() {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    const from = `${location.pathname}${location.search}`;
+    return <Navigate to="/login" replace state={{ from }} />;
   }
 
-  // ✅ importante para rotas aninhadas
+  // importante para rotas aninhadas
   return <Outlet />;
 }

@@ -63,6 +63,7 @@ export default function ReportBuilderModal({
   clientData,
   kpis,
   scenarioId,
+  preferredReportVersion = null,
 }) {
   // ── Report version toggle ──
   const [reportVersion, setReportVersion] = useState("v2"); // "v1" | "v2"
@@ -86,6 +87,13 @@ export default function ReportBuilderModal({
       setAdvisorNotes(saved);
     }
   }, [isOpen, advisorEmail, scenarioId, reportVersion]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!preferredReportVersion) return;
+    if (preferredReportVersion !== "v1" && preferredReportVersion !== "v2") return;
+    setReportVersion(preferredReportVersion);
+  }, [isOpen, preferredReportVersion]);
 
   // Seções selecionadas
   const [selectedSections, setSelectedSections] = useState(() => getDefaultSectionState());

@@ -22,6 +22,7 @@ import {
   Eye,
   EyeOff,
   HelpCircle,
+  ExternalLink,
   Sun,
   Moon,
   Monitor,
@@ -957,6 +958,24 @@ function Header({
   onOpenGuide,
   guideBtnRef,
 }) {
+  const { showToast } = useToast();
+
+  const handleOpenAdvisorControl = useCallback(() => {
+    const baseUrl = import.meta.env.VITE_ADVISOR_CONTROL_BASE_URL?.trim();
+
+    if (!baseUrl) {
+      showToast({
+        type: "warning",
+        title: "Advisor Control",
+        message: "URL do Advisor Control não configurada",
+        duration: 3500,
+      });
+      return;
+    }
+
+    window.open(baseUrl, "_blank", "noopener,noreferrer");
+  }, [showToast]);
+
   return (
     <header className="h-24 shrink-0 flex items-center justify-between px-8 lg:px-10 border-b border-border z-20 relative bg-surface-1/60 backdrop-blur-xl transition-all">
       <div>
@@ -999,6 +1018,18 @@ function Header({
         >
           <Flag size={18} className={isStressTest ? "fill-current" : ""} />
           {isStressTest ? "Stress Ativo" : "Simular Stress"}
+        </button>
+
+        {/* Advisor Control */}
+        <button
+          type="button"
+          onClick={handleOpenAdvisorControl}
+          className="px-4 py-2.5 rounded-xl border border-border text-sm font-semibold transition-all flex items-center gap-2 text-text-muted hover:bg-surface-3 hover:text-text focus-visible:ring-2 focus-visible:ring-accent/40"
+          title="Abrir Advisor Control"
+          aria-label="Abrir Advisor Control"
+        >
+          <ExternalLink size={17} />
+          <span>Advisor Control</span>
         </button>
 
         {/* ✅ Botão Guia (?) - esconder em client mode */}
